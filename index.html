@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111313">
+  <title>Pallimustas — Game Master</title>
+  <style>
+    /* A small, self-contained visual system keeps the sheet easy to move and customize. */
+    :root {
+      color-scheme: dark;
+      --bg: #111313;
+      --panel: #191c1b;
+      --panel-raised: #202422;
+      --panel-soft: #171a19;
+      --line: #303633;
+      --line-bright: #444c47;
+      --text: #ecece4;
+      --muted: #939b93;
+      --faint: #68716b;
+      --gold: #d8aa67;
+      --gold-soft: #392f21;
+      --green: #84aa81;
+      --red: #d77769;
+      --blue: #82a8ca;
+      --purple: #aa91c9;
+      --radius: 12px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); }
+    button { color: inherit; font: inherit; }
+    button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+
+    .sidebar {
+      background: #151817; border-right: 1px solid var(--line); display: flex;
+      flex-direction: column; min-height: 100vh; padding: 27px 16px 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px; }
+    .brand-mark {
+      width: 39px; height: 39px; border: 1px solid #6c5739; border-radius: 12px;
+      display: grid; place-items: center; background: #27231d; color: var(--gold); font-size: 19px;
+    }
+    .brand-name { font-family: Georgia, "Times New Roman", serif; font-size: 17px; letter-spacing: .07em; }
+    .brand-caption { margin-top: 3px; color: var(--faint); font-size: 9px; letter-spacing: .19em; text-transform: uppercase; }
+    .section-label { margin: 38px 10px 11px; color: var(--faint); font-size: 10px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+    .nav-button {
+      display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 12px;
+      border: 1px solid transparent; border-radius: 8px; background: transparent;
+      color: var(--muted); text-align: left; cursor: pointer; font-size: 13px;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .nav-button:hover { background: var(--panel-raised); color: var(--text); }
+    .nav-button.active { border-color: #4b3d2c; background: #29241d; color: #e7c38f; }
+    .nav-icon { width: 18px; text-align: center; font-size: 15px; }
+    .roster-heading { display: flex; align-items: center; justify-content: space-between; }
+    .roster-count { border: 1px solid var(--line); border-radius: 20px; padding: 2px 7px; color: var(--faint); font-size: 10px; }
+    .roster { display: grid; gap: 4px; }
+    .roster .nav-button { padding: 9px 10px; font-size: 12px; }
+    .roster .nav-button.active { color: var(--text); }
+    .avatar {
+      flex: 0 0 auto; width: 29px; height: 29px; display: grid; place-items: center;
+      border: 1px solid var(--avatar-border, #66533a); border-radius: 9px;
+      background: var(--avatar-bg, #322b21); color: var(--avatar-color, #e2bc84);
+      font-size: 11px; font-weight: 700;
+    }
+    .roster-person { min-width: 0; flex: 1; }
+    .roster-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .roster-class { margin-top: 3px; color: var(--faint); font-size: 10px; }
+    .turn-indicator { color: var(--gold); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
+    .sidebar-bottom { margin-top: auto; padding: 16px 9px 0; }
+    .save-note { display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: 10px; }
+    .save-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+    .workspace { min-width: 0; padding: 0 38px 38px; }
+    .topbar {
+      height: 76px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line); gap: 15px;
+    }
+    .breadcrumb { color: var(--muted); font-size: 12px; }
+    .breadcrumb span { margin: 0 8px; color: var(--faint); }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+    .round-status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+    .round-status b { color: var(--text); font-weight: 600; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px #84aa8150; }
+    .page { max-width: 1220px; margin: 0 auto; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 34px 0 25px; }
+    .eyebrow { color: var(--gold); font-size: 10px; font-weight: 700; letter-spacing: .17em; text-transform: uppercase; }
+    h1 { margin: 9px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(26px, 3vw, 35px); font-weight: 500; letter-spacing: -.025em; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .button {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 37px;
+      padding: 0 13px; border: 1px solid var(--line-bright); border-radius: 8px;
+      background: var(--panel-raised); color: var(--text); cursor: pointer; font-size: 11px;
+      font-weight: 600; transition: background .15s, border-color .15s, transform .15s;
+    }
+    .button:hover { border-color: #65553d; background: #292a25; }
+    .button:active { transform: translateY(1px); }
+    .button.primary { border-color: #8c6b3f; background: #493923; color: #f0d7b0; }
+    .button.primary:hover { background: #59472c; }
+    .button.subtle { border-color: transparent; background: transparent; color: var(--muted); }
+    .button.subtle:hover { border-color: var(--line); color: var(--text); }
+    .button:disabled { cursor: not-allowed; opacity: .43; }
+
+    .turn-banner {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      padding: 17px 19px; border: 1px solid #54452f; border-radius: var(--radius);
+      background: linear-gradient(110deg, #29251e, #201f1b 65%, #1c201d);
+    }
+    .turn-left { display: flex; align-items: center; gap: 13px; }
+    .turn-symbol { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #645238; border-radius: 10px; color: var(--gold); font-size: 17px; }
+    .turn-label { color: #c1a77f; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
+    .turn-player { margin-top: 4px; font-family: Georgia, "Times New Roman", serif; font-size: 16px; }
+    .turn-meta { margin-left: 2px; color: var(--muted); font-size: 11px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 20px 0 27px; }
+    .summary-card { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    .summary-top { display: flex; align-items: center; justify-content: space-between; }
+    .summary-label { color: var(--muted); font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+    .summary-icon { color: var(--faint); font-size: 13px; }
+    .summary-value { margin-top: 10px; font-family: Georgia, "Times New Roman", serif; font-size: 26px; }
+    .summary-foot { margin-top: 4px; color: var(--faint); font-size: 10px; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 13px; }
+    .section-title { font-family: Georgia, "Times New Roman", serif; font-size: 18px; font-weight: 500; }
+    .section-helper { color: var(--faint); font-size: 10px; }
+    .player-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .player-card { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); cursor: pointer; transition: border-color .15s, transform .15s; }
+    .player-card:hover { border-color: var(--line-bright); transform: translateY(-2px); }
+    .player-card.current-turn { border-color: #65543a; }
+    .player-card-head { display: flex; align-items: center; gap: 11px; padding: 16px 17px 13px; }
+    .player-card-info { min-width: 0; flex: 1; }
+    .player-card-name { font-family: Georgia, "Times New Roman", serif; font-size: 17px; }
+    .player-card-class { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .turn-tag { padding: 4px 7px; border: 1px solid #54452f; border-radius: 20px; color: #d7b781; font-size: 9px; }
+    .essence-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+    .card-essences { padding: 0 17px 13px; margin-top: -6px; }
+    .essence-chip { padding: 4px 7px; border: 1px solid #4b3d2c; border-radius: 20px; background: #28231d; color: #d7bd93; font-size: 9px; }
+    .card-bars { display: grid; gap: 10px; padding: 2px 17px 17px; }
+    .bar-line { display: grid; grid-template-columns: 64px minmax(0, 1fr) 62px; align-items: center; gap: 9px; }
+    .bar-name { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+    .bar-track { height: 5px; overflow: hidden; border-radius: 6px; background: #303633; }
+    .bar-fill { height: 100%; border-radius: inherit; transition: width .2s; }
+    .bar-fill.health { background: var(--red); }
+    .bar-fill.mana { background: var(--blue); }
+    .bar-fill.stamina { background: var(--green); }
+    .bar-value { color: #c8cbc2; font-size: 10px; text-align: right; font-variant-numeric: tabular-nums; }
+    .quick-stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
+    .quick-stat { padding: 11px 8px; text-align: center; }
+    .quick-stat + .quick-stat { border-left: 1px solid var(--line); }
+    .quick-stat b { display: block; font-size: 12px; font-weight: 600; }
+    .quick-stat span { display: block; margin-top: 3px; color: var(--faint); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; }
+
+    .sheet-layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; align-items: start; gap: 17px; }
+    .sheet-main, .sheet-aside { min-width: 0; }
+    .identity-card, .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .identity-card { display: flex; align-items: center; gap: 14px; padding: 18px; margin-bottom: 14px; }
+    .identity-avatar { width: 50px; height: 50px; border-radius: 14px; font-size: 17px; }
+    .identity-info { min-width: 0; flex: 1; }
+    .identity-name { font-family: Georgia, "Times New Roman", serif; font-size: 23px; }
+    .identity-sub { margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .identity-info .essence-list { margin-top: 9px; }
+    .resource-panel { padding: 17px; }
+    .resource-list { display: grid; gap: 16px; margin-top: 18px; }
+    .resource-row { display: grid; grid-template-columns: 82px minmax(0, 1fr) 100px; align-items: center; gap: 12px; }
+    .resource-title { font-size: 11px; font-weight: 650; }
+    .resource-title small { display: block; margin-top: 4px; color: var(--faint); font-size: 9px; font-weight: 400; }
+    .resource-track { height: 9px; overflow: hidden; border-radius: 9px; background: #303633; }
+    .resource-fill { height: 100%; border-radius: inherit; transition: width .2s; }
+    .resource-fill.health { background: linear-gradient(90deg, #9e4e45, #d77769); }
+    .resource-fill.mana { background: linear-gradient(90deg, #527a9c, #82a8ca); }
+    .resource-fill.stamina { background: linear-gradient(90deg, #5c805b, #91b88b); }
+    .resource-controls { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+    .resource-number { min-width: 50px; color: var(--text); font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+    .mini-button { width: 23px; height: 23px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: #222624; color: var(--muted); cursor: pointer; }
+    .mini-button:hover { border-color: var(--line-bright); color: var(--text); }
+    .stats-panel { margin-top: 14px; padding: 17px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 15px; }
+    .stat-tile { min-height: 66px; padding: 11px; border: 1px solid #2c322e; border-radius: 8px; background: #171a19; }
+    .stat-value { font-family: Georgia, "Times New Roman", serif; font-size: 18px; }
+    .stat-label { margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.35; }
+    .aside-panel { padding: 16px; }
+    .aside-panel + .aside-panel { margin-top: 13px; }
+    .aside-heading { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .next-turn { margin-top: 13px; display: flex; align-items: center; gap: 10px; }
+    .next-name { font-size: 12px; }
+    .next-label { margin-top: 4px; color: var(--faint); font-size: 9px; }
+    .turn-actions { display: grid; gap: 8px; margin-top: 14px; }
+    .turn-actions .button { width: 100%; }
+    .regen-note { margin-top: 10px; color: var(--faint); font-size: 9px; line-height: 1.6; }
+    .ability-section { margin-top: 25px; }
+    .ability-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+    .ability-groups { display: grid; gap: 14px; }
+    .ability-group { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    .ability-group-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--line); background: #1c201e; }
+    .category-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .category-count { color: var(--faint); font-size: 9px; }
+    .ability-list { display: grid; }
+    .ability-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 14px; }
+    .ability-row + .ability-row { border-top: 1px solid #272d29; }
+    .ability-name { font-size: 11px; font-weight: 600; }
+    .ability-description { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+    .ability-costs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .cost-chip { padding: 3px 6px; border: 1px solid #33414a; border-radius: 5px; color: #9ab8d2; font-size: 8px; }
+    .cost-chip.stamina { border-color: #344337; color: #a7c3a0; }
+    .cost-chip.cooldown { border-color: #41394b; color: #b6a4ce; }
+    .cost-chip.power-chip { border-color: #56482e; color: #e0bd7d; }
+    .ability-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .ability-tag { color: #87958a; font-size: 8px; }
+    .tag-manager { margin-top: 16px; padding: 16px; }
+    .tag-manager-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 13px; }
+    .tag-manager-copy { margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .tag-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag-control { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 4px 6px 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: #171a19; }
+    .tag-control-name { color: #c4c9bf; font-size: 10px; }
+    .tag-control-count { color: var(--faint); font-size: 8px; }
+    .tag-control-value { min-width: 25px; color: var(--gold); font-size: 10px; text-align: center; font-variant-numeric: tabular-nums; }
+    .ability-action { min-width: 80px; display: grid; justify-items: end; gap: 5px; }
+    .ability-action .button { min-height: 29px; padding: 0 10px; font-size: 9px; }
+    .disabled-reason { color: var(--faint); font-size: 8px; text-align: right; }
+    .empty-note { padding: 24px; color: var(--muted); text-align: center; font-size: 12px; }
+    .toast {
+      position: fixed; right: 24px; bottom: 22px; z-index: 5; max-width: min(360px, calc(100vw - 32px));
+      padding: 11px 15px; border: 1px solid #54452f; border-radius: 9px; background: #26241f;
+      color: #e9d7b7; box-shadow: 0 12px 35px #0008; font-size: 11px;
+      opacity: 0; transform: translateY(8px); pointer-events: none; transition: .2s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: #090b0ac9; }
+    .modal { width: min(420px, 100%); padding: 21px; border: 1px solid var(--line-bright); border-radius: 13px; background: #1b1e1c; box-shadow: 0 25px 70px #0009; }
+    .modal h2 { margin: 0; font: 500 21px Georgia, "Times New Roman", serif; }
+    .modal p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+    @media (max-width: 930px) {
+      .app-shell { grid-template-columns: 205px minmax(0, 1fr); }
+      .workspace { padding-right: 24px; padding-left: 24px; }
+      .sheet-layout { grid-template-columns: minmax(0, 1fr); }
+      .sheet-aside { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .aside-panel + .aside-panel { margin-top: 0; }
+    }
+    @media (max-width: 650px) {
+      .app-shell { display: block; }
+      .sidebar { min-height: 0; padding: 12px 14px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { padding: 0 2px; }
+      .brand-mark { width: 34px; height: 34px; }
+      .section-label, .sidebar-bottom { display: none; }
+      .sidebar nav { display: flex; gap: 6px; margin-top: 11px; }
+      .sidebar nav .nav-button { width: auto; padding: 8px 10px; }
+      #roster { display: none; }
+      .workspace { padding: 0 16px 28px; }
+      .topbar { height: 54px; }
+      .round-status { font-size: 10px; }
+      .page-head { padding: 26px 0 20px; }
+      .page-head > .button { padding: 0 9px; font-size: 10px; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 13px 0 22px; }
+      .summary-card { padding: 12px; }
+      .summary-value { font-size: 22px; }
+      .player-grid { grid-template-columns: 1fr; }
+      .turn-banner { padding: 13px; }
+      .turn-meta { display: block; margin: 4px 0 0; }
+      .turn-banner > .button { padding: 0 9px; font-size: 9px; }
+      .sheet-aside { grid-template-columns: 1fr; }
+      .resource-row { grid-template-columns: 68px minmax(0, 1fr) 93px; gap: 8px; }
+      .resource-panel, .stats-panel { padding: 13px; }
+      .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ability-row { padding: 10px; }
+      .tag-manager-head { display: block; }
+      .toast { right: 16px; bottom: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">✦</div>
+        <div><div class="brand-name">Pallimustas</div><div class="brand-caption">Game master’s ledger</div></div>
+      </div>
+      <div class="section-label">Campaign</div>
+      <nav aria-label="Main navigation">
+        <button class="nav-button active" data-view="overview"><span class="nav-icon">▦</span> DM Overview</button>
+        <button class="nav-button" data-view="sheet"><span class="nav-icon">▤</span> Character Sheet</button>
+      </nav>
+      <div class="section-label roster-heading"><span>Party roster</span><span class="roster-count" id="roster-count"></span></div>
+      <div class="roster" id="roster"></div>
+      <div class="sidebar-bottom"><div class="save-note"><span class="save-dot"></span> Campaign saved on this device</div></div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">Campaign <span>/</span><strong id="breadcrumb-current">DM Overview</strong></div>
+        <div class="topbar-actions"><div class="round-status"><span class="status-dot"></span> Session active <span>·</span> <b id="top-turn">Turn 1</b></div></div>
+      </header>
+      <div class="page" id="app"></div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div id="modal-root"></div>
+
+  <script>
+    /*
+     * CAMPAIGN SETUP
+     * Every character follows Bob's format: identity, resources, stats, four essences,
+     * and their own ability catalogue. Edit these objects to customize your party.
+     * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
+     *
+     * Ability tags are deliberately shared words across character-specific abilities.
+     * Their power can be adjusted once in TAG_BONUSES to affect every matching ability.
+     */
+    const CHARACTERS = [
+      {
+        id: "Jamez", name: "Bob Smith", race: "Smoulder", magicspecialty: "Astral",
+        rank: "Bronze", initials: "BS", color: "#d8aa67", avatarBg: "#352b1e",
+        resources: { health: 50, mana: 300, stamina: 300 },
+        stats: { manaRecovery: 12, staminaRecovery: 150, physicalAttack: "2D8-2", damageResistance: "4D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
+        essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
+        abilities: [
+          { id: "bob-prism-bolt", name: "Prism Bolt", category: "Arcana", description: "Send a split ray of astral light through a reflected angle.", mana: 24, stamina: 0, cooldown: 1, power: 8, tags: ["illusion", "sun"] },
+          { id: "bob-mirror-ward", name: "Mirror Ward", category: "Arcana", description: "Raise a mirrored barrier that turns aside hostile magic.", mana: 30, stamina: 5, cooldown: 2, power: 10, tags: ["mirror", "warding"] },
+          { id: "bob-solar-cage", name: "Solar Cage", category: "Arcana", description: "Trap a foe inside a lattice of blazing light.", mana: 42, stamina: 8, cooldown: 3, power: 15, tags: ["cage", "sun"] },
+          { id: "bob-starlit-chain", name: "Starlit Chain", category: "Arcana", description: "Bind a target with a chain of astral energy.", mana: 34, stamina: 0, cooldown: 2, power: 11, tags: ["cage", "binding"] },
+          { id: "bob-refraction-step", name: "Refraction Step", category: "Arcana", description: "Slip through a reflection and reappear nearby.", mana: 18, stamina: 12, cooldown: 1, power: 5, tags: ["movement", "illusion"] },
+          { id: "bob-astral-palm", name: "Astral Palm", category: "Combat", description: "Strike with a focused burst of astral force.", mana: 6, stamina: 20, cooldown: 1, power: 8, tags: ["astral", "melee"] },
+          { id: "bob-comet-breaker", name: "Comet Breaker", category: "Combat", description: "Drive a heavy blow into a foe like a falling star.", mana: 10, stamina: 30, cooldown: 2, power: 14, tags: ["impact", "sun"] },
+          { id: "bob-blood-counter", name: "Blood Counter", category: "Combat", description: "Answer an incoming strike with a sharp counterattack.", mana: 4, stamina: 18, cooldown: 1, power: 9, tags: ["blood", "counter"] },
+          { id: "bob-prism-sweep", name: "Prism Sweep", category: "Combat", description: "Sweep a bright arc across nearby opponents.", mana: 12, stamina: 34, cooldown: 3, power: 13, tags: ["sun", "area"] },
+          { id: "bob-reflective-stance", name: "Reflective Stance", category: "Combat", description: "Set your stance to redirect a portion of the next blow.", mana: 14, stamina: 22, cooldown: 2, power: 7, tags: ["mirror", "defense"] },
+          { id: "bob-sunstep", name: "Sunstep", category: "Technique", description: "Dash forward in a flash of warm light.", mana: 0, stamina: 18, cooldown: 0, power: 4, tags: ["movement", "sun"] },
+          { id: "bob-mirror-feint", name: "Mirror Feint", category: "Technique", description: "Leave a false image to draw an enemy's attention.", mana: 10, stamina: 12, cooldown: 1, power: 6, tags: ["illusion", "mirror"] },
+          { id: "bob-cage-breaker", name: "Cage Breaker", category: "Technique", description: "Find the weak point in a binding and tear free.", mana: 5, stamina: 24, cooldown: 2, power: 8, tags: ["cage", "escape"] },
+          { id: "bob-quick-reflection", name: "Quick Reflection", category: "Technique", description: "Turn a practiced parry into a sudden reposition.", mana: 8, stamina: 14, cooldown: 1, power: 5, tags: ["movement", "mirror"] },
+          { id: "bob-astral-focus", name: "Astral Focus", category: "Technique", description: "Center your thoughts to sharpen the next spell.", mana: 12, stamina: 10, cooldown: 2, power: 7, tags: ["astral", "focus"] },
+          { id: "bob-shared-spark", name: "Shared Spark", category: "Support", description: "Restore a small measure of an ally's magical reserve.", mana: 28, stamina: 0, cooldown: 2, power: 10, tags: ["support", "sun"] },
+          { id: "bob-blood-mending", name: "Blood Mending", category: "Support", description: "Use a drop of vital essence to mend a companion.", mana: 22, stamina: 6, cooldown: 2, power: 9, tags: ["blood", "healing"] },
+          { id: "bob-reflective-aegis", name: "Reflective Aegis", category: "Support", description: "Cover an ally in a protective mirrored sheen.", mana: 26, stamina: 8, cooldown: 3, power: 12, tags: ["mirror", "warding"] },
+          { id: "bob-lantern-of-dawn", name: "Lantern of Dawn", category: "Support", description: "Fill the area with reassuring, radiant light.", mana: 20, stamina: 4, cooldown: 2, power: 8, tags: ["sun", "support"] },
+          { id: "bob-open-the-cage", name: "Open the Cage", category: "Support", description: "Release an ally from a snare or restricting effect.", mana: 16, stamina: 10, cooldown: 2, power: 7, tags: ["cage", "escape"] }
+        ]
+      },
+      {
+        id: "garran", name: "Garran Holt", race: "Stonekin", magicspecialty: "Runic",
+        rank: "Silver", initials: "GH", color: "#b1bdc8", avatarBg: "#283039",
+        resources: { health: 145, mana: 48, stamina: 105 },
+        stats: { manaRecovery: 7, staminaRecovery: 16, physicalAttack: "4D8+2", damageResistance: "5D8+1", magic: "2D8", magicResistance: "4D8", speed: 8, reflexes: 9 },
+        essences: ["Iron", "Root", "Thunder", "Oath"],
+        abilities: [
+          { id: "garran-rune-hammer", name: "Rune Hammer", category: "Arcana", description: "Stamp a rune into the ground and release a shockwave.", mana: 12, stamina: 8, cooldown: 1, power: 8, tags: ["rune", "impact"] },
+          { id: "garran-stone-shell", name: "Stone Shell", category: "Arcana", description: "Layer your armor in a temporary coat of stone.", mana: 14, stamina: 4, cooldown: 2, power: 10, tags: ["root", "defense"] },
+          { id: "garran-thunder-mark", name: "Thunder Mark", category: "Arcana", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, power: 11, tags: ["thunder", "rune"] },
+          { id: "garran-iron-anchor", name: "Iron Anchor", category: "Arcana", description: "Root yourself in place against incoming force.", mana: 10, stamina: 10, cooldown: 2, power: 7, tags: ["iron", "root"] },
+          { id: "garran-oathfire", name: "Oathfire", category: "Arcana", description: "Kindle a steady flame that strengthens an ally's resolve.", mana: 16, stamina: 6, cooldown: 3, power: 9, tags: ["oath", "support"] },
+          { id: "garran-mountain-cleave", name: "Mountain Cleave", category: "Combat", description: "Bring a two-handed strike down with crushing weight.", mana: 0, stamina: 32, cooldown: 2, power: 15, tags: ["impact", "melee"] },
+          { id: "garran-iron-wall", name: "Iron Wall", category: "Combat", description: "Set your shield and refuse to give ground.", mana: 4, stamina: 20, cooldown: 1, power: 8, tags: ["iron", "defense"] },
+          { id: "garran-thunder-bash", name: "Thunder Bash", category: "Combat", description: "Crash into an opponent with a shield and a burst of thunder.", mana: 8, stamina: 25, cooldown: 2, power: 12, tags: ["thunder", "impact"] },
+          { id: "garran-stonebreaker", name: "Stonebreaker", category: "Combat", description: "Target a weak point in armor with a deliberate blow.", mana: 5, stamina: 28, cooldown: 2, power: 13, tags: ["melee", "armor"] },
+          { id: "garran-steadfast-guard", name: "Steadfast Guard", category: "Combat", description: "Protect a nearby ally by taking a guarded stance.", mana: 6, stamina: 18, cooldown: 2, power: 8, tags: ["oath", "defense"] },
+          { id: "garran-burrow-charge", name: "Burrow Charge", category: "Technique", description: "Drive forward with a low, unstoppable rush.", mana: 0, stamina: 22, cooldown: 1, power: 7, tags: ["movement", "root"] },
+          { id: "garran-counter-rune", name: "Counter Rune", category: "Technique", description: "Meet a strike with a rune-timed parry.", mana: 8, stamina: 14, cooldown: 1, power: 6, tags: ["rune", "counter"] },
+          { id: "garran-grounding-step", name: "Grounding Step", category: "Technique", description: "Brace and reposition without losing your balance.", mana: 4, stamina: 12, cooldown: 0, power: 4, tags: ["movement", "root"] },
+          { id: "garran-break-formation", name: "Break Formation", category: "Technique", description: "Force open a guarded line with a sudden shoulder check.", mana: 0, stamina: 26, cooldown: 2, power: 10, tags: ["impact", "melee"] },
+          { id: "garran-stone-sense", name: "Stone Sense", category: "Technique", description: "Read vibrations through the earth to anticipate movement.", mana: 10, stamina: 6, cooldown: 2, power: 5, tags: ["root", "focus"] },
+          { id: "garran-rallying-oath", name: "Rallying Oath", category: "Support", description: "Call your companions to hold fast together.", mana: 8, stamina: 12, cooldown: 2, power: 8, tags: ["oath", "support"] },
+          { id: "garran-rune-mending", name: "Rune Mending", category: "Support", description: "Trace a restorative rune over an ally's armor.", mana: 18, stamina: 0, cooldown: 2, power: 9, tags: ["rune", "healing"] },
+          { id: "garran-iron-vow", name: "Iron Vow", category: "Support", description: "Take an ally's burden and fortify your own resolve.", mana: 10, stamina: 15, cooldown: 3, power: 10, tags: ["iron", "oath"] },
+          { id: "garran-earthward", name: "Earthward", category: "Support", description: "Raise a low earthen ridge to shelter nearby allies.", mana: 20, stamina: 8, cooldown: 3, power: 12, tags: ["root", "defense"] },
+          { id: "garran-thunder-call", name: "Thunder Call", category: "Support", description: "Sound a resonant call that steadies the whole party.", mana: 14, stamina: 10, cooldown: 2, power: 8, tags: ["thunder", "support"] }
+        ]
+      },
+      {
+        id: "sera", name: "Sera Nightrain", race: "Veilborn", magicspecialty: "Illusion",
+        rank: "Silver", initials: "SN", color: "#a9c28f", avatarBg: "#293327",
+        resources: { health: 94, mana: 72, stamina: 115 },
+        stats: { manaRecovery: 11, staminaRecovery: 20, physicalAttack: "3D8+1", damageResistance: "3D8", magic: "5D8+1", magicResistance: "3D8+2", speed: 17, reflexes: 19 },
+        essences: ["Mist", "Thorn", "Echo", "Hunger"],
+        abilities: [
+          { id: "sera-phantom-thread", name: "Phantom Thread", category: "Arcana", description: "Weave a nearly invisible strand of deceptive magic.", mana: 14, stamina: 0, cooldown: 1, power: 6, tags: ["illusion", "binding"] },
+          { id: "sera-mist-double", name: "Mist Double", category: "Arcana", description: "Create a moving copy of yourself in a veil of mist.", mana: 20, stamina: 5, cooldown: 2, power: 8, tags: ["illusion", "mist"] },
+          { id: "sera-thorn-hex", name: "Thorn Hex", category: "Arcana", description: "Curse a target with spectral thorns that punish movement.", mana: 24, stamina: 4, cooldown: 2, power: 10, tags: ["thorn", "curse"] },
+          { id: "sera-echoing-veil", name: "Echoing Veil", category: "Arcana", description: "Bend sound and sight around a chosen companion.", mana: 18, stamina: 6, cooldown: 2, power: 7, tags: ["echo", "illusion"] },
+          { id: "sera-hollow-snare", name: "Hollow Snare", category: "Arcana", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, power: 11, tags: ["binding", "mist"] },
+          { id: "sera-nightfang", name: "Nightfang", category: "Combat", description: "Strike from concealment and leave a lingering wound.", mana: 4, stamina: 22, cooldown: 1, power: 11, tags: ["blood", "melee"] },
+          { id: "sera-thorn-dance", name: "Thorn Dance", category: "Combat", description: "Whirl between foes with a pair of curved blades.", mana: 8, stamina: 30, cooldown: 2, power: 13, tags: ["thorn", "movement"] },
+          { id: "sera-echo-strike", name: "Echo Strike", category: "Combat", description: "A false swing distracts before the real blow lands.", mana: 12, stamina: 18, cooldown: 2, power: 10, tags: ["echo", "illusion"] },
+          { id: "sera-hunters-mark", name: "Hunter's Mark", category: "Combat", description: "Mark a target and press the attack with relentless precision.", mana: 10, stamina: 20, cooldown: 2, power: 12, tags: ["hunger", "blood"] },
+          { id: "sera-vanishing-cut", name: "Vanishing Cut", category: "Combat", description: "Disappear for a heartbeat and strike from a new angle.", mana: 14, stamina: 24, cooldown: 3, power: 14, tags: ["movement", "illusion"] },
+          { id: "sera-mistwalk", name: "Mistwalk", category: "Technique", description: "Move through a low drift of mist to a nearby spot.", mana: 8, stamina: 12, cooldown: 0, power: 5, tags: ["movement", "mist"] },
+          { id: "sera-false-footsteps", name: "False Footsteps", category: "Technique", description: "Leave misleading sounds leading away from your trail.", mana: 10, stamina: 8, cooldown: 1, power: 5, tags: ["illusion", "echo"] },
+          { id: "sera-thorn-vault", name: "Thorn Vault", category: "Technique", description: "Spring over an obstacle with a thorned tether.", mana: 0, stamina: 18, cooldown: 1, power: 6, tags: ["movement", "thorn"] },
+          { id: "sera-shadow-read", name: "Shadow Read", category: "Technique", description: "Study a foe's silhouette to predict their next action.", mana: 8, stamina: 6, cooldown: 2, power: 6, tags: ["focus", "illusion"] },
+          { id: "sera-quickblood", name: "Quickblood", category: "Technique", description: "Spend a burst of vitality to sharpen your reflexes.", mana: 4, stamina: 16, cooldown: 2, power: 7, tags: ["blood", "movement"] },
+          { id: "sera-mist-mend", name: "Mist Mend", category: "Support", description: "Wrap a companion in cool mist that eases their wounds.", mana: 18, stamina: 0, cooldown: 2, power: 8, tags: ["mist", "healing"] },
+          { id: "sera-shared-echo", name: "Shared Echo", category: "Support", description: "Carry an ally's warning across the battlefield instantly.", mana: 12, stamina: 5, cooldown: 1, power: 5, tags: ["echo", "support"] },
+          { id: "sera-hidden-path", name: "Hidden Path", category: "Support", description: "Conceal a safe route for your allies to reposition.", mana: 16, stamina: 10, cooldown: 2, power: 8, tags: ["movement", "illusion"] },
+          { id: "sera-blood-offering", name: "Blood Offering", category: "Support", description: "Give up a little vitality to restore an ally's strength.", mana: 14, stamina: 8, cooldown: 3, power: 10, tags: ["blood", "healing"] },
+          { id: "sera-quiet-company", name: "Quiet Company", category: "Support", description: "Soothe an ally with a familiar voice carried on the wind.", mana: 20, stamina: 0, cooldown: 2, power: 8, tags: ["echo", "support"] }
+        ]
+      },
+      {
+        id: "orin", name: "Orin Bellweather", race: "Dawnkin", magicspecialty: "Solar",
+        rank: "Gold", initials: "OB", color: "#c5a6d8", avatarBg: "#30273a",
+        resources: { health: 112, mana: 105, stamina: 82 },
+        stats: { manaRecovery: 16, staminaRecovery: 14, physicalAttack: "3D8+2", damageResistance: "4D8", magic: "5D8+2", magicResistance: "5D8+1", speed: 10, reflexes: 12 },
+        essences: ["Halo", "Ash", "Bell", "Mercy"],
+        abilities: [
+          { id: "orin-dawn-lance", name: "Dawn Lance", category: "Arcana", description: "Form a bright spear of solar magic and cast it forward.", mana: 22, stamina: 0, cooldown: 1, power: 9, tags: ["sun", "light"] },
+          { id: "orin-ashen-seal", name: "Ashen Seal", category: "Arcana", description: "Mark a foe with a seal that dampens hostile magic.", mana: 20, stamina: 4, cooldown: 2, power: 8, tags: ["ash", "warding"] },
+          { id: "orin-bell-of-noon", name: "Bell of Noon", category: "Arcana", description: "Ring out a burst of light that disrupts nearby enemies.", mana: 32, stamina: 6, cooldown: 3, power: 13, tags: ["bell", "area"] },
+          { id: "orin-mercy-flame", name: "Mercy Flame", category: "Arcana", description: "Call a gentle solar flame to soothe an injured ally.", mana: 28, stamina: 0, cooldown: 2, power: 11, tags: ["sun", "healing"] },
+          { id: "orin-radiant-step", name: "Radiant Step", category: "Arcana", description: "Cross a short distance in a flash of golden light.", mana: 16, stamina: 10, cooldown: 1, power: 5, tags: ["movement", "light"] },
+          { id: "orin-sunward-strike", name: "Sunward Strike", category: "Combat", description: "Strike with a weapon warmed by the first light of dawn.", mana: 8, stamina: 20, cooldown: 1, power: 9, tags: ["sun", "melee"] },
+          { id: "orin-bellringer", name: "Bellringer", category: "Combat", description: "Land a ringing blow that staggers a nearby opponent.", mana: 4, stamina: 26, cooldown: 2, power: 12, tags: ["bell", "impact"] },
+          { id: "orin-ashfall", name: "Ashfall", category: "Combat", description: "Scatter a veil of hot ash with a sweeping attack.", mana: 12, stamina: 28, cooldown: 2, power: 13, tags: ["ash", "area"] },
+          { id: "orin-mercy-counter", name: "Mercy Counter", category: "Combat", description: "Redirect a strike without turning defense into cruelty.", mana: 6, stamina: 16, cooldown: 1, power: 7, tags: ["mercy", "counter"] },
+          { id: "orin-dawn-guard", name: "Dawn Guard", category: "Combat", description: "Raise your weapon and hold a line of radiant defense.", mana: 10, stamina: 22, cooldown: 2, power: 10, tags: ["light", "defense"] },
+          { id: "orin-first-light", name: "First Light", category: "Technique", description: "Move with a quick burst as the dawn breaks.", mana: 0, stamina: 16, cooldown: 0, power: 4, tags: ["movement", "sun"] },
+          { id: "orin-ash-step", name: "Ash Step", category: "Technique", description: "Slip through a puff of ash to change position.", mana: 6, stamina: 12, cooldown: 1, power: 5, tags: ["movement", "ash"] },
+          { id: "orin-resonant-focus", name: "Resonant Focus", category: "Technique", description: "Listen for a bell-like rhythm to time your next action.", mana: 10, stamina: 8, cooldown: 2, power: 6, tags: ["bell", "focus"] },
+          { id: "orin-golden-interval", name: "Golden Interval", category: "Technique", description: "Take a measured step that leaves room for an ally.", mana: 4, stamina: 14, cooldown: 1, power: 5, tags: ["movement", "support"] },
+          { id: "orin-merciful-aim", name: "Merciful Aim", category: "Technique", description: "Choose a precise nonlethal strike with practiced care.", mana: 8, stamina: 12, cooldown: 1, power: 6, tags: ["mercy", "focus"] },
+          { id: "orin-dawn-restoration", name: "Dawn Restoration", category: "Support", description: "Restore an ally's health with a warm beam of dawn.", mana: 30, stamina: 0, cooldown: 3, power: 13, tags: ["sun", "healing"] },
+          { id: "orin-bell-of-safety", name: "Bell of Safety", category: "Support", description: "Sound a protective note that steadies the party.", mana: 18, stamina: 8, cooldown: 2, power: 9, tags: ["bell", "warding"] },
+          { id: "orin-mercy-shield", name: "Mercy Shield", category: "Support", description: "Shield an ally from harm with a compassionate ward.", mana: 24, stamina: 6, cooldown: 2, power: 11, tags: ["mercy", "defense"] },
+          { id: "orin-ash-cleansing", name: "Ash Cleansing", category: "Support", description: "Use sacred ash to clear a lingering affliction.", mana: 22, stamina: 4, cooldown: 2, power: 9, tags: ["ash", "cleansing"] },
+          { id: "orin-share-the-light", name: "Share the Light", category: "Support", description: "Lend a companion a spark of your solar reserve.", mana: 16, stamina: 6, cooldown: 2, power: 8, tags: ["light", "support"] }
+        ]
+      }
+    ];
+
+    const CATEGORIES = ["Arcana", "Combat", "Technique", "Support"];
+    // Derive the tag list from the character ability data, so new tags need no second registration.
+    const ABILITY_TAGS = [...new Set(
+      CHARACTERS.flatMap((character) => character.abilities.flatMap((ability) => ability.tags))
+    )].sort();
+    // These are additive bonuses to ability power. Raise one tag once to buff every
+    // matching ability across all four character-specific lists.
+    const TAG_BONUSES = Object.fromEntries(ABILITY_TAGS.map((tag) => [tag, 0]));
+    const STORAGE_KEY = "pallimustas-campaign-v1";
+
+    // Load only session progress from storage; character definitions always come from code.
+    function loadCampaign() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const initial = {
+        turn: 1,
+        turnIndex: 0,
+        selectedId: CHARACTERS[0].id,
+        view: "overview",
+        tagBonuses: { ...TAG_BONUSES },
+        characters: Object.fromEntries(CHARACTERS.map((character) => [
+          character.id,
+          {
+            resources: { ...character.resources },
+            cooldowns: Object.fromEntries(character.abilities.map((ability) => [ability.id, 0]))
+          }
+        ]))
+      };
+
+      if (!saved) return initial;
+      const parsed = JSON.parse(saved);
+      // Merge saved progress with today's character/ability setup, ignoring removed entries.
+      for (const character of CHARACTERS) {
+        const savedCharacter = parsed.characters?.[character.id];
+        if (savedCharacter?.resources) {
+          for (const key of Object.keys(character.resources)) {
+            if (Number.isFinite(savedCharacter.resources[key])) {
+              initial.characters[character.id].resources[key] = Math.max(
+                0, Math.min(character.resources[key], savedCharacter.resources[key])
+              );
+            }
+          }
+        }
+        if (savedCharacter?.cooldowns) {
+          for (const ability of character.abilities) {
+            const cooldown = savedCharacter.cooldowns[ability.id];
+            if (Number.isFinite(cooldown)) {
+              initial.characters[character.id].cooldowns[ability.id] = Math.max(0, cooldown);
+            }
+          }
+        }
+      }
+      // Tag bonuses are campaign-wide and survive reloads, like resources and turn order.
+      if (parsed.tagBonuses) {
+        for (const tag of ABILITY_TAGS) {
+          const bonus = parsed.tagBonuses[tag];
+          if (Number.isFinite(bonus)) initial.tagBonuses[tag] = Math.max(-99, Math.min(99, bonus));
+        }
+      }
+      initial.turn = Number.isInteger(parsed.turn) && parsed.turn > 0 ? parsed.turn : 1;
+      initial.turnIndex = Number.isInteger(parsed.turnIndex) ? Math.max(0, parsed.turnIndex) % CHARACTERS.length : 0;
+      initial.selectedId = CHARACTERS.some((character) => character.id === parsed.selectedId) ? parsed.selectedId : CHARACTERS[0].id;
+      initial.view = parsed.view === "sheet" ? "sheet" : "overview";
+      return initial;
+    }
+
+    let state = loadCampaign();
+    let toastTimer;
+
+    function saveCampaign() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function characterById(id) {
+      return CHARACTERS.find((character) => character.id === id);
+    }
+
+    function getCurrentCharacter() {
+      return CHARACTERS[state.turnIndex];
+    }
+
+    function getSelectedCharacter() {
+      return characterById(state.selectedId);
+    }
+
+    function characterSummary(character) {
+      return `${character.race} · ${character.magicspecialty} · ${character.rank}`;
+    }
+
+    // Power bonuses stack when an ability carries more than one boosted shared tag.
+    function getAbilityPower(ability) {
+      return ability.power + ability.tags.reduce((sum, tag) => sum + (state.tagBonuses[tag] || 0), 0);
+    }
+
+    function getSharedTags() {
+      return ABILITY_TAGS.filter((tag) =>
+        CHARACTERS.filter((character) => character.abilities.some((ability) => ability.tags.includes(tag))).length > 1
+      );
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    function avatarStyle(character, extraClass = "") {
+      return `<div class="avatar ${extraClass}" style="--avatar-color:${character.color};--avatar-bg:${character.avatarBg};--avatar-border:${character.color}55" aria-hidden="true">${escapeHtml(character.initials)}</div>`;
+    }
+
+    function resourcePercent(character, resource) {
+      return Math.max(0, Math.min(100, (state.characters[character.id].resources[resource] / character.resources[resource]) * 100));
+    }
+
+    function resourceBar(character, resource, label) {
+      const current = state.characters[character.id].resources[resource];
+      const maximum = character.resources[resource];
+      return `<div class="bar-line">
+        <span class="bar-name">${label}</span>
+        <div class="bar-track" aria-label="${label} ${current} of ${maximum}"><div class="bar-fill ${resource}" style="width:${resourcePercent(character, resource)}%"></div></div>
+        <span class="bar-value">${current} <span style="color:var(--faint)">/ ${maximum}</span></span>
+      </div>`;
+    }
+
+    function renderRoster() {
+      document.getElementById("roster-count").textContent = CHARACTERS.length;
+      document.getElementById("roster").innerHTML = CHARACTERS.map((character) => {
+        const isCurrent = getCurrentCharacter().id === character.id;
+        return `<button class="nav-button ${state.selectedId === character.id && state.view === "sheet" ? "active" : ""}" data-character="${character.id}">
+          ${avatarStyle(character)}
+          <span class="roster-person"><span class="roster-name">${escapeHtml(character.name)}</span><span class="roster-class">${escapeHtml(characterSummary(character))}</span></span>
+          ${isCurrent ? '<span class="turn-indicator">Turn</span>' : ""}
+        </button>`;
+      }).join("");
+    }
+
+    function renderSummary() {
+      const allResources = CHARACTERS.flatMap((character) => {
+        const current = state.characters[character.id].resources;
+        return Object.keys(character.resources).map((resource) => current[resource] / character.resources[resource]);
+      });
+      const average = Math.round((allResources.reduce((sum, value) => sum + value, 0) / allResources.length) * 100);
+      const totalAbilities = CHARACTERS.reduce((total, character) => total + character.abilities.length, 0);
+      const current = getCurrentCharacter();
+      return `<div class="summary-grid">
+        <article class="summary-card"><div class="summary-top"><span class="summary-label">Party members</span><span class="summary-icon">♙</span></div><div class="summary-value">${CHARACTERS.length}</div><div class="summary-foot">Adventurers in the party</div></article>
+        <article class="summary-card"><div class="summary-top"><span class="summary-label">Turn counter</span><span class="summary-icon">◷</span></div><div class="summary-value">${state.turn}</div><div class="summary-foot">Round ${Math.ceil(state.turn / CHARACTERS.length)}</div></article>
+        <article class="summary-card"><div class="summary-top"><span class="summary-label">Next in order</span><span class="summary-icon">➜</span></div><div class="summary-value" style="font-size:20px">${escapeHtml(current.name.split(" ")[0])}</div><div class="summary-foot">${escapeHtml(characterSummary(current))}</div></article>
+        <article class="summary-card"><div class="summary-top"><span class="summary-label">Party resources</span><span class="summary-icon">◈</span></div><div class="summary-value">${average}<span style="font:12px system-ui;color:var(--muted)">%</span></div><div class="summary-foot">${totalAbilities} abilities ready to track</div></article>
+      </div>`;
+    }
+
+    function renderPlayerCard(character) {
+      const current = getCurrentCharacter().id === character.id;
+      return `<article class="player-card ${current ? "current-turn" : ""}" data-open-character="${character.id}" tabindex="0" role="button" aria-label="Open ${escapeHtml(character.name)}'s character sheet">
+        <div class="player-card-head">
+          ${avatarStyle(character)}
+          <div class="player-card-info"><div class="player-card-name">${escapeHtml(character.name)}</div><div class="player-card-class">${escapeHtml(characterSummary(character))}</div></div>
+          ${current ? '<span class="turn-tag">CURRENT TURN</span>' : ""}
+        </div>
+        <div class="card-bars">
+          ${resourceBar(character, "health", "Health")}
+          ${resourceBar(character, "mana", "Mana")}
+          ${resourceBar(character, "stamina", "Stamina")}
+        </div>
+        <div class="essence-list card-essences" aria-label="Essences">${character.essences.map((essence) => `<span class="essence-chip">${escapeHtml(essence)}</span>`).join("")}</div>
+        <div class="quick-stats">
+          <div class="quick-stat"><b>${escapeHtml(character.stats.physicalAttack)}</b><span>Phys. atk</span></div>
+          <div class="quick-stat"><b>${escapeHtml(character.stats.magic)}</b><span>Magic</span></div>
+          <div class="quick-stat"><b>${character.stats.speed}</b><span>Speed</span></div>
+        </div>
+      </article>`;
+    }
+
+    function turnBanner() {
+      const current = getCurrentCharacter();
+      return `<div class="turn-banner">
+        <div class="turn-left"><div class="turn-symbol" aria-hidden="true">◷</div><div>
+          <div class="turn-label">It is their turn</div><div class="turn-player">${escapeHtml(current.name)} <span class="turn-meta">· ${escapeHtml(characterSummary(current))}</span></div>
+        </div></div>
+        <button class="button primary" data-action="end-turn">End turn <span aria-hidden="true">→</span></button>
+      </div>`;
+    }
+
+    function renderOverview() {
+      return `<div class="page-head"><div><div class="eyebrow">Campaign dashboard</div><h1>The party at a glance</h1><p class="subtitle">A clear view of your adventurers, their resources, and what comes next.</p></div><button class="button" data-action="confirm-reset">↻ <span>Reset session</span></button></div>
+        ${turnBanner()}
+        ${renderSummary()}
+        <section>
+          <div class="section-head"><div class="section-title">Adventuring party</div><div class="section-helper">Select a character to open their full sheet</div></div>
+          <div class="player-grid">${CHARACTERS.map(renderPlayerCard).join("")}</div>
+        </section>
+        ${renderTagManager()}`;
+    }
+
+    // The DM can tune a shared tag once here instead of editing each tagged ability.
+    function renderTagManager() {
+      const tags = getSharedTags();
+      return `<section class="panel tag-manager">
+        <div class="tag-manager-head">
+          <div><div class="section-title">Shared ability tags</div><div class="tag-manager-copy">Adjust a tag's power bonus once to affect every matching ability across the party.</div></div>
+          <div class="section-helper">Bonuses apply to displayed ability power</div>
+        </div>
+        <div class="tag-controls">${tags.map((tag) => {
+          const users = CHARACTERS.filter((character) => character.abilities.some((ability) => ability.tags.includes(tag))).length;
+          const bonus = state.tagBonuses[tag] || 0;
+          return `<div class="tag-control">
+            <span class="tag-control-name">#${escapeHtml(tag)}</span>
+            <span class="tag-control-count">${users} characters</span>
+            <button class="mini-button" data-tag="${escapeHtml(tag)}" data-delta="-1" aria-label="Decrease ${escapeHtml(tag)} power bonus">−</button>
+            <span class="tag-control-value">${bonus > 0 ? "+" : ""}${bonus}</span>
+            <button class="mini-button" data-tag="${escapeHtml(tag)}" data-delta="1" aria-label="Increase ${escapeHtml(tag)} power bonus">+</button>
+          </div>`;
+        }).join("")}</div>
+      </section>`;
+    }
+
+    function resourceControl(character, key, label) {
+      const current = state.characters[character.id].resources[key];
+      const maximum = character.resources[key];
+      return `<div class="resource-row">
+        <div class="resource-title">${label}<small>Max ${maximum}</small></div>
+        <div class="resource-track" aria-label="${label} ${current} of ${maximum}"><div class="resource-fill ${key}" style="width:${resourcePercent(character, key)}%"></div></div>
+        <div class="resource-controls">
+          <button class="mini-button" data-resource="${key}" data-delta="-1" aria-label="Decrease ${label}">−</button>
+          <span class="resource-number">${current} / ${maximum}</span>
+          <button class="mini-button" data-resource="${key}" data-delta="1" aria-label="Increase ${label}">+</button>
+        </div>
+      </div>`;
+    }
+
+    function statTile(value, label) {
+      return `<div class="stat-tile"><div class="stat-value">${escapeHtml(value)}</div><div class="stat-label">${escapeHtml(label)}</div></div>`;
+    }
+
+    function renderAbilities(character) {
+      const progress = state.characters[character.id];
+      return `<section class="ability-section">
+        <div class="ability-heading"><div><div class="section-title">Abilities</div><div class="section-helper" style="margin-top:5px">Use an ability to spend resources and start its cooldown.</div></div><div class="section-helper">${character.abilities.length} personal abilities · 4 disciplines</div></div>
+        <div class="ability-groups">${CATEGORIES.map((category) => {
+          const abilities = character.abilities.filter((ability) => ability.category === category);
+          return `<div class="ability-group">
+            <div class="ability-group-head"><span class="category-title">${category}</span><span class="category-count">${abilities.length} abilities</span></div>
+            <div class="ability-list">${abilities.map((ability) => {
+              const cooldown = progress.cooldowns[ability.id];
+              const enoughMana = progress.resources.mana >= ability.mana;
+              const enoughStamina = progress.resources.stamina >= ability.stamina;
+              const disabled = cooldown > 0 || !enoughMana || !enoughStamina;
+              const reason = cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
+              const costs = [
+                ability.mana > 0 ? `<span class="cost-chip">◈ ${ability.mana} mana</span>` : "",
+                ability.stamina > 0 ? `<span class="cost-chip stamina">⌁ ${ability.stamina} stamina</span>` : "",
+                ability.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${ability.cooldown} turn${ability.cooldown === 1 ? "" : "s"} CD</span>` : "",
+                `<span class="cost-chip power-chip">✦ Power ${getAbilityPower(ability)}</span>`
+              ].filter(Boolean).join("");
+              const tags = ability.tags.map((tag) => `<span class="ability-tag">#${escapeHtml(tag)}${state.tagBonuses[tag] ? ` ${state.tagBonuses[tag] > 0 ? "+" : ""}${state.tagBonuses[tag]}` : ""}</span>`).join("");
+              return `<div class="ability-row">
+                <div><div class="ability-name">${escapeHtml(ability.name)}</div><div class="ability-description">${escapeHtml(ability.description)}</div><div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
+                <div class="ability-action"><button class="button ${disabled ? "" : "primary"}" data-use-ability="${ability.id}" ${disabled ? "disabled" : ""}>${cooldown > 0 ? "Cooling down" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}</div>
+              </div>`;
+            }).join("")}</div>
+          </div>`;
+        }).join("")}</div>
+      </section>`;
+    }
+
+    function renderSheet() {
+      const character = getSelectedCharacter();
+      const next = CHARACTERS[(state.turnIndex + 1) % CHARACTERS.length];
+      return `<div class="page-head"><div><div class="eyebrow">Character sheet · ${escapeHtml(character.rank)}</div><h1>${escapeHtml(character.name)}</h1><p class="subtitle">${escapeHtml(characterSummary(character))}</p></div><button class="button" data-action="confirm-reset">↻ <span>Reset session</span></button></div>
+        <div class="sheet-layout">
+          <div class="sheet-main">
+            <div class="identity-card">
+              ${avatarStyle(character, "identity-avatar")}
+              <div class="identity-info"><div class="identity-name">${escapeHtml(character.name)}</div><div class="identity-sub">${escapeHtml(characterSummary(character))}</div><div class="essence-list">${character.essences.map((essence) => `<span class="essence-chip">${escapeHtml(essence)}</span>`).join("")}</div></div>
+              ${getCurrentCharacter().id === character.id ? '<span class="turn-tag">CURRENT TURN</span>' : ""}
+            </div>
+            <section class="panel resource-panel">
+              <div class="section-head" style="margin:0"><div class="section-title">Resources</div><div class="section-helper">Use + / − to adjust</div></div>
+              <div class="resource-list">
+                ${resourceControl(character, "health", "Health")}
+                ${resourceControl(character, "mana", "Mana")}
+                ${resourceControl(character, "stamina", "Stamina")}
+              </div>
+            </section>
+            <section class="panel stats-panel">
+              <div class="section-head" style="margin:0"><div class="section-title">Core stats</div><div class="section-helper">Configured stats</div></div>
+              <div class="stat-grid">
+                ${statTile(character.stats.manaRecovery, "Mana recovery / turn")}
+                ${statTile(character.stats.staminaRecovery, "Stamina recovery / turn")}
+                ${statTile(character.stats.physicalAttack, "Physical attack")}
+                ${statTile(character.stats.damageResistance, "Damage resistance")}
+                ${statTile(character.stats.magic, "Magic")}
+                ${statTile(character.stats.magicResistance, "Magic resistance")}
+                ${statTile(character.stats.speed, "Speed")}
+                ${statTile(character.stats.reflexes, "Reflexes")}
+              </div>
+            </section>
+            ${renderAbilities(character)}
+          </div>
+          <aside class="sheet-aside">
+            <section class="panel aside-panel">
+              <div class="aside-heading">Turn order</div>
+              <div class="next-turn">${avatarStyle(getCurrentCharacter())}<div><div class="next-name">${escapeHtml(getCurrentCharacter().name)}</div><div class="next-label">Current · Turn ${state.turn}</div></div></div>
+              <div class="next-turn" style="margin-top:12px">${avatarStyle(next)}<div><div class="next-name">${escapeHtml(next.name)}</div><div class="next-label">Up next</div></div></div>
+              <div class="turn-actions"><button class="button primary" data-action="end-turn">End ${escapeHtml(character.name.split(" ")[0])}'s turn →</button><button class="button subtle" data-action="confirm-reset">↻ Reset session</button></div>
+              <div class="regen-note">Ending the current turn restores mana and stamina, then reduces all of that character’s cooldowns.</div>
+            </section>
+            <section class="panel aside-panel">
+              <div class="aside-heading">Session</div>
+              <div class="next-turn"><div class="turn-symbol" style="width:32px;height:32px">◷</div><div><div class="next-name">Turn ${state.turn}</div><div class="next-label">Round ${Math.ceil(state.turn / CHARACTERS.length)}</div></div></div>
+              <div class="regen-note">Progress is saved in this browser automatically. Reset restores the party’s configured starting resources.</div>
+            </section>
+          </aside>
+        </div>`;
+    }
+
+    // Re-render all surfaces together so the roster, dashboard, sheet, and turn badge stay in sync.
+    function render() {
+      document.getElementById("top-turn").textContent = `Turn ${state.turn}`;
+      document.getElementById("breadcrumb-current").textContent = state.view === "overview" ? "DM Overview" : "Character Sheet";
+      document.querySelectorAll("[data-view]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.view === state.view);
+      });
+      document.getElementById("app").innerHTML = state.view === "overview" ? renderOverview() : renderSheet();
+      renderRoster();
+    }
+
+    function notify(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2300);
+    }
+
+    function setResource(characterId, key, delta) {
+      const character = characterById(characterId);
+      const resources = state.characters[characterId].resources;
+      const nextValue = Math.max(0, Math.min(character.resources[key], resources[key] + delta));
+      if (nextValue === resources[key]) return;
+      resources[key] = nextValue;
+      saveCampaign();
+      render();
+    }
+
+    function setTagBonus(tag, delta) {
+      if (!ABILITY_TAGS.includes(tag)) return;
+      state.tagBonuses[tag] = Math.max(-99, Math.min(99, (state.tagBonuses[tag] || 0) + delta));
+      saveCampaign();
+      render();
+      notify(`#${tag} power bonus is now ${state.tagBonuses[tag] > 0 ? "+" : ""}${state.tagBonuses[tag]}.`);
+    }
+
+    function useAbility(abilityId) {
+      const character = getSelectedCharacter();
+      const progress = state.characters[character.id];
+      const ability = character.abilities.find((entry) => entry.id === abilityId);
+      if (!ability || progress.cooldowns[abilityId] > 0) return;
+      if (progress.resources.mana < ability.mana || progress.resources.stamina < ability.stamina) return;
+
+      progress.resources.mana -= ability.mana;
+      progress.resources.stamina -= ability.stamina;
+      progress.cooldowns[abilityId] = ability.cooldown;
+      saveCampaign();
+      render();
+      notify(`${ability.name} used — ${character.name}'s resources updated.`);
+    }
+
+    function endTurn() {
+      const character = getCurrentCharacter();
+      const progress = state.characters[character.id];
+      // Recovery is capped at each character's configured maximum; no resource can overflow.
+      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + character.stats.manaRecovery);
+      progress.resources.stamina = Math.min(character.resources.stamina, progress.resources.stamina + character.stats.staminaRecovery);
+      for (const ability of character.abilities) {
+        progress.cooldowns[ability.id] = Math.max(0, progress.cooldowns[ability.id] - 1);
+      }
+      state.turnIndex = (state.turnIndex + 1) % CHARACTERS.length;
+      state.turn += 1;
+      saveCampaign();
+      render();
+      notify(`${character.name}'s turn ended. Resources recovered and cooldowns reduced.`);
+    }
+
+    function resetCampaign() {
+      // Restore initial character resources, clear cooldowns, and return turn order to its start.
+      for (const character of CHARACTERS) {
+        state.characters[character.id] = {
+          resources: { ...character.resources },
+          cooldowns: Object.fromEntries(character.abilities.map((ability) => [ability.id, 0]))
+        };
+      }
+      state.tagBonuses = { ...TAG_BONUSES };
+      state.turn = 1;
+      state.turnIndex = 0;
+      saveCampaign();
+      render();
+      notify("Session reset. Players and shared-tag bonuses are back at their defaults.");
+    }
+
+    function showResetConfirmation() {
+      const root = document.getElementById("modal-root");
+      root.innerHTML = `<div class="modal-backdrop" data-dismiss-modal>
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+          <h2 id="reset-title">Reset this session?</h2>
+          <p>All players’ resources and ability cooldowns will return to their configured starting values. The turn counter and shared tag bonuses will also reset. This cannot be undone.</p>
+          <div class="modal-actions"><button class="button" data-action="cancel-reset">Keep playing</button><button class="button primary" data-action="reset">Reset session</button></div>
+        </section></div>`;
+      root.querySelector("[data-action='cancel-reset']").focus();
+    }
+
+    // One delegated handler keeps controls working after every render.
+    document.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
+
+      const viewButton = target.closest("[data-view]");
+      if (viewButton) {
+        state.view = viewButton.dataset.view;
+        saveCampaign();
+        render();
+        return;
+      }
+
+      const rosterButton = target.closest("[data-character]");
+      if (rosterButton) {
+        state.selectedId = rosterButton.dataset.character;
+        state.view = "sheet";
+        saveCampaign();
+        render();
+        return;
+      }
+
+      const card = target.closest("[data-open-character]");
+      if (card) {
+        state.selectedId = card.dataset.openCharacter;
+        state.view = "sheet";
+        saveCampaign();
+        render();
+        return;
+      }
+
+      const resourceButton = target.closest("[data-resource]");
+      if (resourceButton) {
+        setResource(state.selectedId, resourceButton.dataset.resource, Number(resourceButton.dataset.delta));
+        return;
+      }
+
+      const tagButton = target.closest("[data-tag]");
+      if (tagButton) {
+        setTagBonus(tagButton.dataset.tag, Number(tagButton.dataset.delta));
+        return;
+      }
+
+      const abilityButton = target.closest("[data-use-ability]");
+      if (abilityButton) {
+        useAbility(abilityButton.dataset.useAbility);
+        return;
+      }
+
+      const action = target.closest("[data-action]")?.dataset.action;
+      if (action === "end-turn") endTurn();
+      if (action === "confirm-reset") showResetConfirmation();
+      if (action === "cancel-reset") document.getElementById("modal-root").innerHTML = "";
+      if (action === "reset") {
+        document.getElementById("modal-root").innerHTML = "";
+        resetCampaign();
+      }
+      if (target.matches("[data-dismiss-modal]")) document.getElementById("modal-root").innerHTML = "";
+    });
+
+    // Allow keyboard activation on overview character cards, in addition to mouse/touch.
+    document.addEventListener("keydown", (event) => {
+      if ((event.key === "Enter" || event.key === " ") && event.target instanceof Element) {
+        const card = event.target.closest("[data-open-character]");
+        if (card) {
+          event.preventDefault();
+          card.click();
+        }
+      }
+      if (event.key === "Escape") document.getElementById("modal-root").innerHTML = "";
+    });
+
+    render();
+  </script>
+</body>
+</html>
