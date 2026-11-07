@@ -200,6 +200,8 @@
     .ability-row + .ability-row { border-top: 1px solid #272d29; }
     .ability-name { font-size: 11px; font-weight: 600; }
     .ability-description { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+    .variant-select { max-width: 190px; margin-top: 7px; padding: 5px 8px; border: 1px solid var(--line-bright); border-radius: 6px; background: #171a19; color: var(--text); font: inherit; font-size: 9px; }
+    .passive-label { color: #b6a4ce; font-size: 9px; letter-spacing: .1em; }
     .ability-costs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
     .cost-chip { padding: 3px 6px; border: 1px solid #33414a; border-radius: 5px; color: #9ab8d2; font-size: 8px; }
     .cost-chip.stamina { border-color: #344337; color: #a7c3a0; }
@@ -284,13 +286,13 @@
       </nav>
       <div class="section-label roster-heading"><span>Party roster</span><span class="roster-count" id="roster-count"></span></div>
       <div class="roster" id="roster"></div>
-      <div class="sidebar-bottom"><div class="save-note"><span class="save-dot"></span> Campaign saved on this device</div></div>
+      <div class="sidebar-bottom"><div class="save-note"><span class="save-dot" id="sync-dot"></span><span id="sync-status">Saved on this device</span></div></div>
     </aside>
 
     <main class="workspace">
       <header class="topbar">
         <div class="breadcrumb">Campaign <span>/</span><strong id="breadcrumb-current">DM Overview</strong></div>
-        <div class="topbar-actions"><div class="round-status"><span class="status-dot"></span> Session active <span>·</span> <b id="top-turn">Turn 1</b></div></div>
+        <div class="topbar-actions"><div class="round-status"><span class="status-dot" id="top-sync-dot"></span><span id="top-sync-status">Local only</span> <span>·</span> <b id="top-turn">Round 1</b></div></div>
       </header>
       <div class="page" id="app"></div>
     </main>
@@ -305,8 +307,10 @@
      * and their own ability catalogue. Edit these objects to customize your party.
      * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
      *
-     * Ability tags are deliberately shared words across character-specific abilities.
-     * Their power can be adjusted once in TAG_BONUSES to affect every matching ability.
+     * Shared ability tags are ordinary tags such as "movement" and "blood".
+     * Use "passive" to remove costs, cooldowns, and the use button. Use "variant:<group>"
+     * (for example "variant:astral-bolt") on multiple same-category abilities to make
+     * them a single dropdown with individual costs, cooldowns, descriptions, and effects.
      */
     const CHARACTERS = [
       {
@@ -316,10 +320,10 @@
         stats: { manaRecovery: 12, staminaRecovery: 150, physicalAttack: "2D8-2", damageResistance: "4D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
         essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
         abilities: [
-          { id: "bob-prism-bolt", name: "Prism Bolt", category: "Arcana", description: "Send a split ray of astral light through a reflected angle.", mana: 24, stamina: 0, cooldown: 1, power: 8, tags: ["illusion", "sun"] },
+          { id: "bob-prism-bolt", name: "Astral Bolt", variantName: "Focused", category: "Arcana", description: "Send a concentrated ray of astral light at one target.", mana: 24, stamina: 0, cooldown: 1, power: 8, tags: ["illusion", "sun", "variant:astral-bolt"] },
           { id: "bob-mirror-ward", name: "Mirror Ward", category: "Arcana", description: "Raise a mirrored barrier that turns aside hostile magic.", mana: 30, stamina: 5, cooldown: 2, power: 10, tags: ["mirror", "warding"] },
           { id: "bob-solar-cage", name: "Solar Cage", category: "Arcana", description: "Trap a foe inside a lattice of blazing light.", mana: 42, stamina: 8, cooldown: 3, power: 15, tags: ["cage", "sun"] },
-          { id: "bob-starlit-chain", name: "Starlit Chain", category: "Arcana", description: "Bind a target with a chain of astral energy.", mana: 34, stamina: 0, cooldown: 2, power: 11, tags: ["cage", "binding"] },
+          { id: "bob-starlit-chain", name: "Astral Bolt", variantName: "Binding", category: "Arcana", description: "Bind a target with a ray of astral energy.", mana: 34, stamina: 0, cooldown: 2, power: 11, tags: ["cage", "binding", "variant:astral-bolt"] },
           { id: "bob-refraction-step", name: "Refraction Step", category: "Arcana", description: "Slip through a reflection and reappear nearby.", mana: 18, stamina: 12, cooldown: 1, power: 5, tags: ["movement", "illusion"] },
           { id: "bob-astral-palm", name: "Astral Palm", category: "Combat", description: "Strike with a focused burst of astral force.", mana: 6, stamina: 20, cooldown: 1, power: 8, tags: ["astral", "melee"] },
           { id: "bob-comet-breaker", name: "Comet Breaker", category: "Combat", description: "Drive a heavy blow into a foe like a falling star.", mana: 10, stamina: 30, cooldown: 2, power: 14, tags: ["impact", "sun"] },
@@ -330,7 +334,7 @@
           { id: "bob-mirror-feint", name: "Mirror Feint", category: "Technique", description: "Leave a false image to draw an enemy's attention.", mana: 10, stamina: 12, cooldown: 1, power: 6, tags: ["illusion", "mirror"] },
           { id: "bob-cage-breaker", name: "Cage Breaker", category: "Technique", description: "Find the weak point in a binding and tear free.", mana: 5, stamina: 24, cooldown: 2, power: 8, tags: ["cage", "escape"] },
           { id: "bob-quick-reflection", name: "Quick Reflection", category: "Technique", description: "Turn a practiced parry into a sudden reposition.", mana: 8, stamina: 14, cooldown: 1, power: 5, tags: ["movement", "mirror"] },
-          { id: "bob-astral-focus", name: "Astral Focus", category: "Technique", description: "Center your thoughts to sharpen the next spell.", mana: 12, stamina: 10, cooldown: 2, power: 7, tags: ["astral", "focus"] },
+          { id: "bob-astral-focus", name: "Astral Focus", category: "Technique", description: "A constant focus that sharpens your awareness of astral energy.", mana: 0, stamina: 0, cooldown: 0, power: 7, tags: ["astral", "focus", "passive"] },
           { id: "bob-shared-spark", name: "Shared Spark", category: "Support", description: "Restore a small measure of an ally's magical reserve.", mana: 28, stamina: 0, cooldown: 2, power: 10, tags: ["support", "sun"] },
           { id: "bob-blood-mending", name: "Blood Mending", category: "Support", description: "Use a drop of vital essence to mend a companion.", mana: 22, stamina: 6, cooldown: 2, power: 9, tags: ["blood", "healing"] },
           { id: "bob-reflective-aegis", name: "Reflective Aegis", category: "Support", description: "Cover an ally in a protective mirrored sheen.", mana: 26, stamina: 8, cooldown: 3, power: 12, tags: ["mirror", "warding"] },
@@ -345,9 +349,9 @@
         stats: { manaRecovery: 7, staminaRecovery: 16, physicalAttack: "4D8+2", damageResistance: "5D8+1", magic: "2D8", magicResistance: "4D8", speed: 8, reflexes: 9 },
         essences: ["Iron", "Root", "Thunder", "Oath"],
         abilities: [
-          { id: "garran-rune-hammer", name: "Rune Hammer", category: "Arcana", description: "Stamp a rune into the ground and release a shockwave.", mana: 12, stamina: 8, cooldown: 1, power: 8, tags: ["rune", "impact"] },
+          { id: "garran-rune-hammer", name: "Runic Burst", variantName: "Ground shock", category: "Arcana", description: "Stamp a rune into the ground and release a shockwave.", mana: 12, stamina: 8, cooldown: 1, power: 8, tags: ["rune", "impact", "variant:runic-burst"] },
           { id: "garran-stone-shell", name: "Stone Shell", category: "Arcana", description: "Layer your armor in a temporary coat of stone.", mana: 14, stamina: 4, cooldown: 2, power: 10, tags: ["root", "defense"] },
-          { id: "garran-thunder-mark", name: "Thunder Mark", category: "Arcana", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, power: 11, tags: ["thunder", "rune"] },
+          { id: "garran-thunder-mark", name: "Runic Burst", variantName: "Thunder brand", category: "Arcana", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, power: 11, tags: ["thunder", "rune", "variant:runic-burst"] },
           { id: "garran-iron-anchor", name: "Iron Anchor", category: "Arcana", description: "Root yourself in place against incoming force.", mana: 10, stamina: 10, cooldown: 2, power: 7, tags: ["iron", "root"] },
           { id: "garran-oathfire", name: "Oathfire", category: "Arcana", description: "Kindle a steady flame that strengthens an ally's resolve.", mana: 16, stamina: 6, cooldown: 3, power: 9, tags: ["oath", "support"] },
           { id: "garran-mountain-cleave", name: "Mountain Cleave", category: "Combat", description: "Bring a two-handed strike down with crushing weight.", mana: 0, stamina: 32, cooldown: 2, power: 15, tags: ["impact", "melee"] },
@@ -359,7 +363,7 @@
           { id: "garran-counter-rune", name: "Counter Rune", category: "Technique", description: "Meet a strike with a rune-timed parry.", mana: 8, stamina: 14, cooldown: 1, power: 6, tags: ["rune", "counter"] },
           { id: "garran-grounding-step", name: "Grounding Step", category: "Technique", description: "Brace and reposition without losing your balance.", mana: 4, stamina: 12, cooldown: 0, power: 4, tags: ["movement", "root"] },
           { id: "garran-break-formation", name: "Break Formation", category: "Technique", description: "Force open a guarded line with a sudden shoulder check.", mana: 0, stamina: 26, cooldown: 2, power: 10, tags: ["impact", "melee"] },
-          { id: "garran-stone-sense", name: "Stone Sense", category: "Technique", description: "Read vibrations through the earth to anticipate movement.", mana: 10, stamina: 6, cooldown: 2, power: 5, tags: ["root", "focus"] },
+          { id: "garran-stone-sense", name: "Stone Sense", category: "Technique", description: "A constant awareness of vibrations through the earth.", mana: 0, stamina: 0, cooldown: 0, power: 5, tags: ["root", "focus", "passive"] },
           { id: "garran-rallying-oath", name: "Rallying Oath", category: "Support", description: "Call your companions to hold fast together.", mana: 8, stamina: 12, cooldown: 2, power: 8, tags: ["oath", "support"] },
           { id: "garran-rune-mending", name: "Rune Mending", category: "Support", description: "Trace a restorative rune over an ally's armor.", mana: 18, stamina: 0, cooldown: 2, power: 9, tags: ["rune", "healing"] },
           { id: "garran-iron-vow", name: "Iron Vow", category: "Support", description: "Take an ally's burden and fortify your own resolve.", mana: 10, stamina: 15, cooldown: 3, power: 10, tags: ["iron", "oath"] },
@@ -374,11 +378,11 @@
         stats: { manaRecovery: 11, staminaRecovery: 20, physicalAttack: "3D8+1", damageResistance: "3D8", magic: "5D8+1", magicResistance: "3D8+2", speed: 17, reflexes: 19 },
         essences: ["Mist", "Thorn", "Echo", "Hunger"],
         abilities: [
-          { id: "sera-phantom-thread", name: "Phantom Thread", category: "Arcana", description: "Weave a nearly invisible strand of deceptive magic.", mana: 14, stamina: 0, cooldown: 1, power: 6, tags: ["illusion", "binding"] },
+          { id: "sera-phantom-thread", name: "Phantom Snare", variantName: "Thread", category: "Arcana", description: "Weave a nearly invisible strand of deceptive magic.", mana: 14, stamina: 0, cooldown: 1, power: 6, tags: ["illusion", "binding", "variant:phantom-snare"] },
           { id: "sera-mist-double", name: "Mist Double", category: "Arcana", description: "Create a moving copy of yourself in a veil of mist.", mana: 20, stamina: 5, cooldown: 2, power: 8, tags: ["illusion", "mist"] },
           { id: "sera-thorn-hex", name: "Thorn Hex", category: "Arcana", description: "Curse a target with spectral thorns that punish movement.", mana: 24, stamina: 4, cooldown: 2, power: 10, tags: ["thorn", "curse"] },
           { id: "sera-echoing-veil", name: "Echoing Veil", category: "Arcana", description: "Bend sound and sight around a chosen companion.", mana: 18, stamina: 6, cooldown: 2, power: 7, tags: ["echo", "illusion"] },
-          { id: "sera-hollow-snare", name: "Hollow Snare", category: "Arcana", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, power: 11, tags: ["binding", "mist"] },
+          { id: "sera-hollow-snare", name: "Phantom Snare", variantName: "Hollow trap", category: "Arcana", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, power: 11, tags: ["binding", "mist", "variant:phantom-snare"] },
           { id: "sera-nightfang", name: "Nightfang", category: "Combat", description: "Strike from concealment and leave a lingering wound.", mana: 4, stamina: 22, cooldown: 1, power: 11, tags: ["blood", "melee"] },
           { id: "sera-thorn-dance", name: "Thorn Dance", category: "Combat", description: "Whirl between foes with a pair of curved blades.", mana: 8, stamina: 30, cooldown: 2, power: 13, tags: ["thorn", "movement"] },
           { id: "sera-echo-strike", name: "Echo Strike", category: "Combat", description: "A false swing distracts before the real blow lands.", mana: 12, stamina: 18, cooldown: 2, power: 10, tags: ["echo", "illusion"] },
@@ -387,7 +391,7 @@
           { id: "sera-mistwalk", name: "Mistwalk", category: "Technique", description: "Move through a low drift of mist to a nearby spot.", mana: 8, stamina: 12, cooldown: 0, power: 5, tags: ["movement", "mist"] },
           { id: "sera-false-footsteps", name: "False Footsteps", category: "Technique", description: "Leave misleading sounds leading away from your trail.", mana: 10, stamina: 8, cooldown: 1, power: 5, tags: ["illusion", "echo"] },
           { id: "sera-thorn-vault", name: "Thorn Vault", category: "Technique", description: "Spring over an obstacle with a thorned tether.", mana: 0, stamina: 18, cooldown: 1, power: 6, tags: ["movement", "thorn"] },
-          { id: "sera-shadow-read", name: "Shadow Read", category: "Technique", description: "Study a foe's silhouette to predict their next action.", mana: 8, stamina: 6, cooldown: 2, power: 6, tags: ["focus", "illusion"] },
+          { id: "sera-shadow-read", name: "Shadow Read", category: "Technique", description: "A constant reading of a foe's silhouette and intent.", mana: 0, stamina: 0, cooldown: 0, power: 6, tags: ["focus", "illusion", "passive"] },
           { id: "sera-quickblood", name: "Quickblood", category: "Technique", description: "Spend a burst of vitality to sharpen your reflexes.", mana: 4, stamina: 16, cooldown: 2, power: 7, tags: ["blood", "movement"] },
           { id: "sera-mist-mend", name: "Mist Mend", category: "Support", description: "Wrap a companion in cool mist that eases their wounds.", mana: 18, stamina: 0, cooldown: 2, power: 8, tags: ["mist", "healing"] },
           { id: "sera-shared-echo", name: "Shared Echo", category: "Support", description: "Carry an ally's warning across the battlefield instantly.", mana: 12, stamina: 5, cooldown: 1, power: 5, tags: ["echo", "support"] },
@@ -403,9 +407,9 @@
         stats: { manaRecovery: 16, staminaRecovery: 14, physicalAttack: "3D8+2", damageResistance: "4D8", magic: "5D8+2", magicResistance: "5D8+1", speed: 10, reflexes: 12 },
         essences: ["Halo", "Ash", "Bell", "Mercy"],
         abilities: [
-          { id: "orin-dawn-lance", name: "Dawn Lance", category: "Arcana", description: "Form a bright spear of solar magic and cast it forward.", mana: 22, stamina: 0, cooldown: 1, power: 9, tags: ["sun", "light"] },
+          { id: "orin-dawn-lance", name: "Dawn Call", variantName: "Lance", category: "Arcana", description: "Form a bright spear of solar magic and cast it forward.", mana: 22, stamina: 0, cooldown: 1, power: 9, tags: ["sun", "light", "variant:dawn-call"] },
           { id: "orin-ashen-seal", name: "Ashen Seal", category: "Arcana", description: "Mark a foe with a seal that dampens hostile magic.", mana: 20, stamina: 4, cooldown: 2, power: 8, tags: ["ash", "warding"] },
-          { id: "orin-bell-of-noon", name: "Bell of Noon", category: "Arcana", description: "Ring out a burst of light that disrupts nearby enemies.", mana: 32, stamina: 6, cooldown: 3, power: 13, tags: ["bell", "area"] },
+          { id: "orin-bell-of-noon", name: "Dawn Call", variantName: "Noon chime", category: "Arcana", description: "Ring out a burst of light that disrupts nearby enemies.", mana: 32, stamina: 6, cooldown: 3, power: 13, tags: ["bell", "area", "variant:dawn-call"] },
           { id: "orin-mercy-flame", name: "Mercy Flame", category: "Arcana", description: "Call a gentle solar flame to soothe an injured ally.", mana: 28, stamina: 0, cooldown: 2, power: 11, tags: ["sun", "healing"] },
           { id: "orin-radiant-step", name: "Radiant Step", category: "Arcana", description: "Cross a short distance in a flash of golden light.", mana: 16, stamina: 10, cooldown: 1, power: 5, tags: ["movement", "light"] },
           { id: "orin-sunward-strike", name: "Sunward Strike", category: "Combat", description: "Strike with a weapon warmed by the first light of dawn.", mana: 8, stamina: 20, cooldown: 1, power: 9, tags: ["sun", "melee"] },
@@ -415,7 +419,7 @@
           { id: "orin-dawn-guard", name: "Dawn Guard", category: "Combat", description: "Raise your weapon and hold a line of radiant defense.", mana: 10, stamina: 22, cooldown: 2, power: 10, tags: ["light", "defense"] },
           { id: "orin-first-light", name: "First Light", category: "Technique", description: "Move with a quick burst as the dawn breaks.", mana: 0, stamina: 16, cooldown: 0, power: 4, tags: ["movement", "sun"] },
           { id: "orin-ash-step", name: "Ash Step", category: "Technique", description: "Slip through a puff of ash to change position.", mana: 6, stamina: 12, cooldown: 1, power: 5, tags: ["movement", "ash"] },
-          { id: "orin-resonant-focus", name: "Resonant Focus", category: "Technique", description: "Listen for a bell-like rhythm to time your next action.", mana: 10, stamina: 8, cooldown: 2, power: 6, tags: ["bell", "focus"] },
+          { id: "orin-resonant-focus", name: "Resonant Focus", category: "Technique", description: "A constant awareness of the rhythm of nearby movement.", mana: 0, stamina: 0, cooldown: 0, power: 6, tags: ["bell", "focus", "passive"] },
           { id: "orin-golden-interval", name: "Golden Interval", category: "Technique", description: "Take a measured step that leaves room for an ally.", mana: 4, stamina: 14, cooldown: 1, power: 5, tags: ["movement", "support"] },
           { id: "orin-merciful-aim", name: "Merciful Aim", category: "Technique", description: "Choose a precise nonlethal strike with practiced care.", mana: 8, stamina: 12, cooldown: 1, power: 6, tags: ["mercy", "focus"] },
           { id: "orin-dawn-restoration", name: "Dawn Restoration", category: "Support", description: "Restore an ally's health with a warm beam of dawn.", mana: 30, stamina: 0, cooldown: 3, power: 13, tags: ["sun", "healing"] },
@@ -431,20 +435,31 @@
     // Derive the tag list from the character ability data, so new tags need no second registration.
     const ABILITY_TAGS = [...new Set(
       CHARACTERS.flatMap((character) => character.abilities.flatMap((ability) => ability.tags))
-    )].sort();
+    )].filter((tag) => tag !== "passive" && !tag.startsWith("variant:")).sort();
     // These are additive bonuses to ability power. Raise one tag once to buff every
     // matching ability across all four character-specific lists.
     const TAG_BONUSES = Object.fromEntries(ABILITY_TAGS.map((tag) => [tag, 0]));
     const STORAGE_KEY = "pallimustas-campaign-v1";
+    const FIREBASE_CONFIG = {
+      // Fill these values from Firebase Console > Project settings > Your apps.
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_DATABASE_NAME.REGION.firebasedatabase.app",
+      projectId: "YOUR_PROJECT_ID",
+      appId: "YOUR_FIREBASE_APP_ID"
+    };
+    // Keep this path identical on every device. Anyone who can access a public app using
+    // anonymous sign-in can access its campaign, so don't store private player information.
+    const FIREBASE_CAMPAIGN_PATH = "campaigns/pallimustas-main";
 
-    // Load only session progress from storage; character definitions always come from code.
-    function loadCampaign() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const initial = {
+    // Build clean defaults from the code-configured roster and each character's own abilities.
+    function createInitialCampaign() {
+      return {
         turn: 1,
         turnIndex: 0,
         selectedId: CHARACTERS[0].id,
         view: "overview",
+        variantSelection: {},
         tagBonuses: { ...TAG_BONUSES },
         characters: Object.fromEntries(CHARACTERS.map((character) => [
           character.id,
@@ -454,9 +469,12 @@
           }
         ]))
       };
+    }
 
-      if (!saved) return initial;
-      const parsed = JSON.parse(saved);
+    // Only accept known player, ability, resource, and tag keys from saved or remote state.
+    function mergeCampaignProgress(parsed) {
+      const initial = createInitialCampaign();
+      if (!parsed || typeof parsed !== "object") return initial;
       // Merge saved progress with today's character/ability setup, ignoring removed entries.
       for (const character of CHARACTERS) {
         const savedCharacter = parsed.characters?.[character.id];
@@ -471,6 +489,7 @@
         }
         if (savedCharacter?.cooldowns) {
           for (const ability of character.abilities) {
+            if (ability.tags.includes("passive")) continue;
             const cooldown = savedCharacter.cooldowns[ability.id];
             if (Number.isFinite(cooldown)) {
               initial.characters[character.id].cooldowns[ability.id] = Math.max(0, cooldown);
@@ -489,14 +508,132 @@
       initial.turnIndex = Number.isInteger(parsed.turnIndex) ? Math.max(0, parsed.turnIndex) % CHARACTERS.length : 0;
       initial.selectedId = CHARACTERS.some((character) => character.id === parsed.selectedId) ? parsed.selectedId : CHARACTERS[0].id;
       initial.view = parsed.view === "sheet" ? "sheet" : "overview";
+      if (parsed.variantSelection && typeof parsed.variantSelection === "object") {
+        for (const character of CHARACTERS) {
+          for (const ability of character.abilities) {
+            const group = ability.tags.find((tag) => tag.startsWith("variant:"))?.slice("variant:".length);
+            const selectedAbilityId = parsed.variantSelection[character.id]?.[group];
+            if (group && character.abilities.some((entry) => entry.id === selectedAbilityId && entry.tags.includes(`variant:${group}`))) {
+              initial.variantSelection[character.id] ??= {};
+              initial.variantSelection[character.id][group] = selectedAbilityId;
+            }
+          }
+        }
+      }
       return initial;
+    }
+
+    // Session state remains usable on a local file; Firebase sync is enabled after config is added.
+    function loadCampaign() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? mergeCampaignProgress(JSON.parse(saved)) : createInitialCampaign();
     }
 
     let state = loadCampaign();
     let toastTimer;
+    let remoteCampaignRef = null;
+    let remoteSet = null;
+    let applyingRemoteState = false;
+    let remoteWriteQueue = Promise.resolve();
 
     function saveCampaign() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (remoteCampaignRef && !applyingRemoteState) queueRemoteSave();
+    }
+
+    function setSyncStatus(message, isError = false) {
+      document.getElementById("sync-status").textContent = message;
+      document.getElementById("top-sync-status").textContent = message;
+      for (const id of ["sync-dot", "top-sync-dot"]) {
+        const dot = document.getElementById(id);
+        dot.style.background = isError ? "var(--red)" : message === "Synced" ? "var(--green)" : "var(--gold)";
+      }
+    }
+
+    // View and selected character are device-local; game progress and resources are shared.
+    function sharedCampaignSnapshot() {
+      return {
+        turn: state.turn,
+        turnIndex: state.turnIndex,
+        tagBonuses: state.tagBonuses,
+        characters: state.characters
+      };
+    }
+
+    function queueRemoteSave() {
+      if (!remoteCampaignRef || !remoteSet) return;
+      const payload = sharedCampaignSnapshot();
+      remoteWriteQueue = remoteWriteQueue
+        .then(() => remoteSet(remoteCampaignRef, payload))
+        .then(() => setSyncStatus("Synced"))
+        .catch((error) => {
+          console.error("Could not save campaign to Firebase:", error);
+          setSyncStatus("Sync error", true);
+          notify("Campaign sync failed. Your local changes are still saved.");
+        });
+    }
+
+    /*
+     * GitHub Pages serves this file but has no database of its own. Add the public
+     * Firebase web config above, enable Anonymous Authentication, and create Realtime
+     * Database. Before sharing a public page, restrict database rules to your players'
+     * Firebase Auth UIDs; a broad "auth != null" rule lets any site visitor write.
+     * Firebase web config is public; never put an Admin SDK key or service secret here.
+     */
+    async function startFirebaseSync() {
+      const configured = Object.values(FIREBASE_CONFIG).every((value) =>
+        value && !value.startsWith("YOUR_") && !value.includes("YOUR_DATABASE_NAME")
+      );
+      if (!configured) {
+        setSyncStatus("Local only");
+        return;
+      }
+
+      setSyncStatus("Connecting");
+      try {
+        const [appSdk, authSdk, databaseSdk] = await Promise.all([
+          import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
+          import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
+          import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js")
+        ]);
+        const app = appSdk.initializeApp(FIREBASE_CONFIG);
+        const auth = authSdk.getAuth(app);
+        await authSdk.signInAnonymously(auth);
+        const database = databaseSdk.getDatabase(app);
+        remoteCampaignRef = databaseSdk.ref(database, FIREBASE_CAMPAIGN_PATH);
+        remoteSet = databaseSdk.set;
+        setSyncStatus("Connecting");
+        databaseSdk.onValue(remoteCampaignRef, (snapshot) => {
+          if (!snapshot.exists()) {
+            queueRemoteSave();
+            return;
+          }
+          const localView = state.view;
+          const localSelection = state.selectedId;
+          const localVariants = state.variantSelection;
+          applyingRemoteState = true;
+          state = {
+            ...mergeCampaignProgress(snapshot.val()),
+            view: localView,
+            selectedId: localSelection,
+            variantSelection: localVariants
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          applyingRemoteState = false;
+          render();
+          setSyncStatus("Synced");
+        }, (error) => {
+          console.error("Firebase campaign listener failed:", error);
+          setSyncStatus("Sync error", true);
+          notify("Could not receive campaign updates from Firebase.");
+        });
+      } catch (error) {
+        console.error("Firebase campaign sync could not start:", error);
+        remoteCampaignRef = null;
+        remoteSet = null;
+        setSyncStatus("Sync error", true);
+        notify("Firebase sync could not connect. Local saving is still available.");
+      }
     }
 
     function characterById(id) {
@@ -572,7 +709,7 @@
       const current = getCurrentCharacter();
       return `<div class="summary-grid">
         <article class="summary-card"><div class="summary-top"><span class="summary-label">Party members</span><span class="summary-icon">♙</span></div><div class="summary-value">${CHARACTERS.length}</div><div class="summary-foot">Adventurers in the party</div></article>
-        <article class="summary-card"><div class="summary-top"><span class="summary-label">Turn counter</span><span class="summary-icon">◷</span></div><div class="summary-value">${state.turn}</div><div class="summary-foot">Round ${Math.ceil(state.turn / CHARACTERS.length)}</div></article>
+        <article class="summary-card"><div class="summary-top"><span class="summary-label">Party rotation</span><span class="summary-icon">◷</span></div><div class="summary-value">${state.turn}</div><div class="summary-foot">Advances after everyone takes a turn</div></article>
         <article class="summary-card"><div class="summary-top"><span class="summary-label">Next in order</span><span class="summary-icon">➜</span></div><div class="summary-value" style="font-size:20px">${escapeHtml(current.name.split(" ")[0])}</div><div class="summary-foot">${escapeHtml(characterSummary(current))}</div></article>
         <article class="summary-card"><div class="summary-top"><span class="summary-label">Party resources</span><span class="summary-icon">◈</span></div><div class="summary-value">${average}<span style="font:12px system-ui;color:var(--muted)">%</span></div><div class="summary-foot">${totalAbilities} abilities ready to track</div></article>
       </div>`;
@@ -661,32 +798,68 @@
       return `<div class="stat-tile"><div class="stat-value">${escapeHtml(value)}</div><div class="stat-label">${escapeHtml(label)}</div></div>`;
     }
 
-    function renderAbilities(character) {
+    function variantGroupFor(ability) {
+      return ability.tags.find((tag) => tag.startsWith("variant:"))?.slice("variant:".length) || null;
+    }
+
+    function abilitiesForCategory(character, category) {
+      const groups = [];
+      const grouped = new Map();
+      for (const ability of character.abilities.filter((entry) => entry.category === category)) {
+        const group = variantGroupFor(ability);
+        if (!group) {
+          groups.push({ group: null, abilities: [ability] });
+          continue;
+        }
+        if (!grouped.has(group)) {
+          const entry = { group, abilities: [] };
+          grouped.set(group, entry);
+          groups.push(entry);
+        }
+        grouped.get(group).abilities.push(ability);
+      }
+      return groups;
+    }
+
+    function selectedAbilityFor(character, group, variants) {
+      const selectedId = state.variantSelection[character.id]?.[group];
+      return variants.find((ability) => ability.id === selectedId) || variants[0];
+    }
+
+    function renderAbilityRow(character, variants) {
       const progress = state.characters[character.id];
+      const group = variantGroupFor(variants[0]);
+      const ability = group ? selectedAbilityFor(character, group, variants) : variants[0];
+      const passive = ability.tags.includes("passive");
+      const cooldown = progress.cooldowns[ability.id] || 0;
+      const enoughMana = progress.resources.mana >= ability.mana;
+      const enoughStamina = progress.resources.stamina >= ability.stamina;
+      const disabled = passive || cooldown > 0 || !enoughMana || !enoughStamina;
+      const reason = passive ? "" : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
+      const costs = passive ? '<span class="cost-chip power-chip">Passive</span>' : [
+        ability.mana > 0 ? `<span class="cost-chip">◈ ${ability.mana} mana</span>` : "",
+        ability.stamina > 0 ? `<span class="cost-chip stamina">⌁ ${ability.stamina} stamina</span>` : "",
+        ability.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${ability.cooldown} turn${ability.cooldown === 1 ? "" : "s"} CD</span>` : "",
+        `<span class="cost-chip power-chip">✦ Power ${getAbilityPower(ability)}</span>`
+      ].filter(Boolean).join("");
+      const tags = ability.tags.filter((tag) => tag !== "passive" && !tag.startsWith("variant:"))
+        .map((tag) => `<span class="ability-tag">#${escapeHtml(tag)}${state.tagBonuses[tag] ? ` ${state.tagBonuses[tag] > 0 ? "+" : ""}${state.tagBonuses[tag]}` : ""}</span>`).join("");
+      const variantControl = group ? `<label><span class="section-helper">Variant </span><select class="variant-select" data-variant-character="${escapeHtml(character.id)}" data-variant-group="${escapeHtml(group)}" aria-label="${escapeHtml(ability.name)} version">${variants.map((variant) => `<option value="${escapeHtml(variant.id)}" ${variant.id === ability.id ? "selected" : ""}>${escapeHtml(variant.variantName || variant.name)}</option>`).join("")}</select></label>` : "";
+      return `<div class="ability-row">
+        <div>${variantControl}<div class="ability-name">${escapeHtml(ability.name)}</div><div class="ability-description">${escapeHtml(ability.description)}</div><div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
+        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${cooldown > 0 ? "Cooling down" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
+      </div>`;
+    }
+
+    function renderAbilities(character) {
       return `<section class="ability-section">
         <div class="ability-heading"><div><div class="section-title">Abilities</div><div class="section-helper" style="margin-top:5px">Use an ability to spend resources and start its cooldown.</div></div><div class="section-helper">${character.abilities.length} personal abilities · 4 disciplines</div></div>
         <div class="ability-groups">${CATEGORIES.map((category) => {
-          const abilities = character.abilities.filter((ability) => ability.category === category);
+          const groups = abilitiesForCategory(character, category);
+          const count = groups.reduce((total, entry) => total + entry.abilities.length, 0);
           return `<div class="ability-group">
-            <div class="ability-group-head"><span class="category-title">${category}</span><span class="category-count">${abilities.length} abilities</span></div>
-            <div class="ability-list">${abilities.map((ability) => {
-              const cooldown = progress.cooldowns[ability.id];
-              const enoughMana = progress.resources.mana >= ability.mana;
-              const enoughStamina = progress.resources.stamina >= ability.stamina;
-              const disabled = cooldown > 0 || !enoughMana || !enoughStamina;
-              const reason = cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
-              const costs = [
-                ability.mana > 0 ? `<span class="cost-chip">◈ ${ability.mana} mana</span>` : "",
-                ability.stamina > 0 ? `<span class="cost-chip stamina">⌁ ${ability.stamina} stamina</span>` : "",
-                ability.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${ability.cooldown} turn${ability.cooldown === 1 ? "" : "s"} CD</span>` : "",
-                `<span class="cost-chip power-chip">✦ Power ${getAbilityPower(ability)}</span>`
-              ].filter(Boolean).join("");
-              const tags = ability.tags.map((tag) => `<span class="ability-tag">#${escapeHtml(tag)}${state.tagBonuses[tag] ? ` ${state.tagBonuses[tag] > 0 ? "+" : ""}${state.tagBonuses[tag]}` : ""}</span>`).join("");
-              return `<div class="ability-row">
-                <div><div class="ability-name">${escapeHtml(ability.name)}</div><div class="ability-description">${escapeHtml(ability.description)}</div><div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
-                <div class="ability-action"><button class="button ${disabled ? "" : "primary"}" data-use-ability="${ability.id}" ${disabled ? "disabled" : ""}>${cooldown > 0 ? "Cooling down" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}</div>
-              </div>`;
-            }).join("")}</div>
+            <div class="ability-group-head"><span class="category-title">${category}</span><span class="category-count">${count} abilities</span></div>
+            <div class="ability-list">${groups.map((entry) => renderAbilityRow(character, entry.abilities)).join("")}</div>
           </div>`;
         }).join("")}</div>
       </section>`;
@@ -729,14 +902,14 @@
           <aside class="sheet-aside">
             <section class="panel aside-panel">
               <div class="aside-heading">Turn order</div>
-              <div class="next-turn">${avatarStyle(getCurrentCharacter())}<div><div class="next-name">${escapeHtml(getCurrentCharacter().name)}</div><div class="next-label">Current · Turn ${state.turn}</div></div></div>
+              <div class="next-turn">${avatarStyle(getCurrentCharacter())}<div><div class="next-name">${escapeHtml(getCurrentCharacter().name)}</div><div class="next-label">Current · Round ${state.turn}</div></div></div>
               <div class="next-turn" style="margin-top:12px">${avatarStyle(next)}<div><div class="next-name">${escapeHtml(next.name)}</div><div class="next-label">Up next</div></div></div>
               <div class="turn-actions"><button class="button primary" data-action="end-turn">End ${escapeHtml(character.name.split(" ")[0])}'s turn →</button><button class="button subtle" data-action="confirm-reset">↻ Reset session</button></div>
               <div class="regen-note">Ending the current turn restores mana and stamina, then reduces all of that character’s cooldowns.</div>
             </section>
             <section class="panel aside-panel">
               <div class="aside-heading">Session</div>
-              <div class="next-turn"><div class="turn-symbol" style="width:32px;height:32px">◷</div><div><div class="next-name">Turn ${state.turn}</div><div class="next-label">Round ${Math.ceil(state.turn / CHARACTERS.length)}</div></div></div>
+              <div class="next-turn"><div class="turn-symbol" style="width:32px;height:32px">◷</div><div><div class="next-name">Round ${state.turn}</div><div class="next-label">Full party rotation counter</div></div></div>
               <div class="regen-note">Progress is saved in this browser automatically. Reset restores the party’s configured starting resources.</div>
             </section>
           </aside>
@@ -745,7 +918,7 @@
 
     // Re-render all surfaces together so the roster, dashboard, sheet, and turn badge stay in sync.
     function render() {
-      document.getElementById("top-turn").textContent = `Turn ${state.turn}`;
+      document.getElementById("top-turn").textContent = `Round ${state.turn}`;
       document.getElementById("breadcrumb-current").textContent = state.view === "overview" ? "DM Overview" : "Character Sheet";
       document.querySelectorAll("[data-view]").forEach((button) => {
         button.classList.toggle("active", button.dataset.view === state.view);
@@ -780,11 +953,24 @@
       notify(`#${tag} power bonus is now ${state.tagBonuses[tag] > 0 ? "+" : ""}${state.tagBonuses[tag]}.`);
     }
 
+    function selectAbilityVariant(characterId, group, abilityId) {
+      const character = characterById(characterId);
+      const isVariant = character.abilities.some((ability) =>
+        ability.id === abilityId && ability.tags.includes(`variant:${group}`)
+      );
+      if (!isVariant) return;
+      state.variantSelection[characterId] ??= {};
+      state.variantSelection[characterId][group] = abilityId;
+      saveCampaign();
+      render();
+    }
+
     function useAbility(abilityId) {
       const character = getSelectedCharacter();
       const progress = state.characters[character.id];
       const ability = character.abilities.find((entry) => entry.id === abilityId);
       if (!ability || progress.cooldowns[abilityId] > 0) return;
+      if (ability.tags.includes("passive")) return;
       if (progress.resources.mana < ability.mana || progress.resources.stamina < ability.stamina) return;
 
       progress.resources.mana -= ability.mana;
@@ -802,10 +988,12 @@
       progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + character.stats.manaRecovery);
       progress.resources.stamina = Math.min(character.resources.stamina, progress.resources.stamina + character.stats.staminaRecovery);
       for (const ability of character.abilities) {
+        if (ability.tags.includes("passive")) continue;
         progress.cooldowns[ability.id] = Math.max(0, progress.cooldowns[ability.id] - 1);
       }
       state.turnIndex = (state.turnIndex + 1) % CHARACTERS.length;
-      state.turn += 1;
+      // Round counter advances only when turn order wraps back to the first character.
+      if (state.turnIndex === 0) state.turn += 1;
       saveCampaign();
       render();
       notify(`${character.name}'s turn ended. Resources recovered and cooldowns reduced.`);
@@ -820,6 +1008,7 @@
         };
       }
       state.tagBonuses = { ...TAG_BONUSES };
+      state.variantSelection = {};
       state.turn = 1;
       state.turnIndex = 0;
       saveCampaign();
@@ -898,6 +1087,13 @@
       if (target.matches("[data-dismiss-modal]")) document.getElementById("modal-root").innerHTML = "";
     });
 
+    // Variant selection changes only this device's sheet preference; game state remains shared.
+    document.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement) || !target.matches("[data-variant-character]")) return;
+      selectAbilityVariant(target.dataset.variantCharacter, target.dataset.variantGroup, target.value);
+    });
+
     // Allow keyboard activation on overview character cards, in addition to mouse/touch.
     document.addEventListener("keydown", (event) => {
       if ((event.key === "Enter" || event.key === " ") && event.target instanceof Element) {
@@ -911,6 +1107,7 @@
     });
 
     render();
+    startFirebaseSync();
   </script>
 </body>
 </html>
