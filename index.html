@@ -66,9 +66,9 @@
       background: var(--avatar-bg, #322b21); color: var(--avatar-color, #e2bc84);
       font-size: 11px; font-weight: 700;
     }
-    .roster-person { min-width: 0; flex: 1; }
-    .roster-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .roster-class { margin-top: 3px; color: var(--faint); font-size: 10px; }
+    .roster-person { min-width: 0; flex: 1; display: block; }
+    .roster-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .roster-class { display: block; margin-top: 4px; color: var(--faint); font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
     .turn-indicator { color: var(--gold); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
     .sidebar-bottom { margin-top: auto; padding: 16px 9px 0; }
     .save-note { display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: 10px; }
