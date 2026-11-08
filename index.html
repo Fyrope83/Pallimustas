@@ -323,11 +323,9 @@
   <script>
     /*
      * CAMPAIGN SETUP
-     * Add variants as nested options on an ability to keep its category slot.
      * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
      * Add statEffects to an ability or racial gift to apply a source-labeled stat bonus.
      * Effects stack and render separately; active effects need duration, while "passive" effects apply continuously.
-     * Give every statEffect a unique id within its ability or gift.
      * Add costEffects to a passive to reduce mana/stamina costs for selected targets.
      * Cost effect targets can also use "others" to affect everyone except the source.
 
@@ -353,7 +351,7 @@
         id: "Jamez", name: "Bob Smith", race: "Smoulder", magicspecialty: "Astral",
         rank: "Bronze", initials: "BS", color: "#d8aa67", avatarBg: "#352b1e",
         resources: { health: 50, mana: 300, stamina: 300 },
-        stats: { manaRecovery: 12, staminaRecovery: 64, physicalAttack: "2D8-2", damageResistance: "3D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
+        stats: { manaRecovery: 12, staminaRecovery: 64, physicalAttack: "2D8-2", damageResistance: "2D8-1", magic: "3D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
         essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
         abilities: [
           { id: "bob-teleport", name: "Teleport", category: "Magic", summary: "Teleport to a point within sight.", description: "Teleports the user to a point within sight, with a maximum limit of 100 km, and You can also teleport essence users of Bronze rank and below with you for a cost of +5 per person; Iron rankers and below don\'t have a mana cost to teleport", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
@@ -407,14 +405,24 @@
           { id: "bob-seeing-double", name: "Seeing Double", category: "Doppelganger", summary: "Decrease perception of enemies within your aura.", description: "Decrease perception of enemies within your aura and you can see through illusions upto bronze rank.", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Perception", "Illusion", "passive"] }
         ],
         racialGifts: [
-          { id: "bob-strengthened-flesh", name: "Strengthened Flesh", summary: "Increased damage resistance.", description: "Your Smoulder ancestry and flesh powers have mutated you into a combination of both; you have increased damage resistance.", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental", "passive"], statEffects: [
+          { id: "bob-strengthened-flesh", name: "Strengthened Flesh", summary: "Increased damage resistance.", description: "Your Smoulder ancestry and flesh powers have mutated you into a combination of both; you have increased damage resistance.", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental", "Buff", "passive"], statEffects: [
             { id: "strengthened-flesh-resistance", stat: "damageResistance", bonus: "1D8", target: "self" }
           ] },
-          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"]},
-          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
-          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
-          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
-          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
+          { id: "bob-spellborn", name: "Spellborn", summary: "Your spells have increased effect.", description: "Your spells damage is increased by 1D8.", cooldown: 0, duration: 0, tags: ["Racial Gift", "Buff", "passive"], statEffects: [
+            { id: "spellborn-effect", stat: "magic", bonus: "1D8", target: "self" }
+          ] },
+          { id: "bob-earthborn", name: "Earthborn", summary: "Increased damage resistance.", description: "Increased damage resistance by 1D8.", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental", "Buff", "passive"], statEffects: [
+            { id: "earthborn-resistance", stat: "damageResistance", bonus: "1D8", target: "self" }
+          ] },
+          { id: "bob-life-fire", name: "Life Fire", summary: "health and stamina recovery from heat.", description: "Increases health and stamina recovery when near heat.", cooldown: 3, duration: 2, tags: ["Racial Gift", "elemental", "Buff", "passive"], resourceEffects: [
+            { id: "life-fire-health", resource: "health", bonus: "1D6", target: "self" } ], statEffects: [
+            { id: "life-fire-stamina", stat: "staminaRecovery", bonus: "6", target: "self" }
+          ] },
+          { id: "bob-heart-of-the-earth", name: "Heart of the Earth", summary: "Increase stamina and mana recovery after meditation.", description: "Increase stamina and mana recovery by 6 for 10 turns after meditating.", cooldown: 0, duration: 10, tags: ["Racial Gift", "elemental", "Buff"], statEffects: [
+            { id: "heart-of-the-earth-stamina", stat: "staminaRecovery", bonus: "6", target: "self" },
+            { id: "heart-of-the-earth-mana", stat: "manaRecovery", bonus: "6", target: "self"}
+          ] },
+          { id: "bob-backup-plan", name: "The Backup Plan", summary: "Make an object explode in relation to it's size.", description: "Make an object explode in relation to it's size. Must be holdable", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental"] },
         ]
       },
       {
