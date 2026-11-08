@@ -245,6 +245,9 @@
     .modal-close { float: right; min-width: 30px; min-height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-raised); color: var(--muted); cursor: pointer; }
     .modal h2 { margin: 0; font: 500 21px Georgia, "Times New Roman", serif; }
     .modal p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .ability-cost-inputs { display: grid; gap: 12px; }
+    .ability-cost-input { display: grid; gap: 5px; color: var(--muted); font-size: 11px; }
+    .ability-cost-input input { width: 100%; padding: 9px 10px; border: 1px solid var(--line-bright); border-radius: 7px; background: #171a19; color: var(--text); font: inherit; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
     @media (max-width: 930px) {
@@ -316,30 +319,36 @@
   <script>
     /*
      * CAMPAIGN SETUP
-     * Every character follows Bob's format: identity, resources, stats, four essences,
-     * their own abilities, and optional racial gifts. Edit these objects to customize
-     * your party. Add variants as nested options on an ability to keep its category slot.
+     * Add variants as nested options on an ability to keep its category slot.
      * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
      * Add statEffects to an ability to apply a timed, source-labeled stat bonus when used.
-     * Targets can be "self", "party", "tagged", or "self-and-tagged" (characters with
-     * abilities carrying one configured tag, matched case-insensitively). Durations
-     * count down on each affected character's turn.
-     * Example: statEffects: [{ id: "focus-magic", stat: "magic", bonus: "1D8",
-     * duration: 1, target: "self" }]. For tagged targets, add tags: ["Melee"].
+     * statEffects on abilities tagged "passive" apply continuously and ignore duration.
+     * Add costEffects to a passive to reduce mana/stamina costs for selected targets.
+     * Cost effect targets can also use "others" to affect everyone except the source.
+
+     * Each effect uses { id, resource, amount, target }; set amount to "XX" to ask on use.
+     * Resource effect amounts may be negative to spend a resource, or positive to restore it.
+     * Targets can be "self", "party", "tagged", or "self-and-tagged" (characters with abilities carrying one configured tag, matched case-insensitively).
+     * Durations count down on each affected character's turn.
+     * Example: statEffects: [{ id: "focus-magic", stat: "magic", bonus: "1D8", duration: 1, target: "self" }]. For tagged targets, add tags: ["Melee"].
      *
      * Shared ability tags are ordinary tags such as "movement" and "blood".
-     * Use "passive" to remove costs, cooldowns, and the use button. Ability variants
-     * are separate configurations nested on the ability, not separate category entries.
-     * Variant fields override the base ability fields; set duration to keep a cooldown
-     * paused while the effect is active. Racial gifts are free to use and may have
-     * cooldown and duration fields. Every active ability can be used once per owner turn.
+     * Use "passive" to remove costs, cooldowns, and the use button.
+     * Ability variants are separate configurations nested on the ability, not separate category entries.
+     * Variant fields override the base ability fields; set duration to keep a cooldown paused while the effect is active. \
+     * Racial gifts are free to use and may have cooldown and duration fields.
+     * Active abilities default to one use per owner turn.
+     * Set usesPerTurn above 1 for an ability that can be used multiple times on its owner's turn.
+     * Abilities may define charges and recharge; each spent charge restores after that many owner turns.
+     * Set mana, stamina, or cooldown to "XX" to ask for that value when the ability is used.
+     * Example: { mana: "XX", stamina: 10, cooldown: "XX" } asks for mana and cooldown.
      */
     const CHARACTERS = [
       {
         id: "Jamez", name: "Bob Smith", race: "Smoulder", magicspecialty: "Astral",
         rank: "Bronze", initials: "BS", color: "#d8aa67", avatarBg: "#352b1e",
-        resources: { health: 50, mana: 300, stamina: 64 },
-        stats: { manaRecovery: 12, staminaRecovery: 150, physicalAttack: "2D8-2", damageResistance: "4D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
+        resources: { health: 50, mana: 300, stamina: 300 },
+        stats: { manaRecovery: 12, staminaRecovery: 64, physicalAttack: "2D8-2", damageResistance: "4D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
         essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
         abilities: [
           { id: "bob-teleport", name: "Teleport", category: "Magic", summary: "Teleport to a point within sight.", description: "Teleports the user to a point within sight, with a maximum limit of 100 km, and You can also teleport essence users of Bronze rank and below with you for a cost of +5 per person; Iron rankers and below don\'t have a mana cost to teleport", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
@@ -349,21 +358,45 @@
           ] },
           { id: "bob-juxtapose", name: "Juxtapose", category: "Magic", summary: "Swap the location of two entities.", description: "Swap the location of two allies and/or enemies. You must be able to see both subjects. If an ally resists or prevents it, it is negated.Enemies affected by this ability take +10% from all sources for 1 turn.", mana: 40, stamina: 8, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
           { id: "bob-power-lock", name: "Power Lock", category: "Magic", summary: "When the target uses an ability, a second one goes on cooldown.", description: "When the target uses an ability, a random other ability goes on cooldown and uses mana, as if it has been used, if the ability had no mana cost, the target suffers disruptive-force damage commensurate with the strength of the ability. If the target has no other abilities, the ability it used has doubled cooldown, or if the ability has no cooldown, it becomes unavailable for a brief period.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Curse", "Magic"] },
-          { id: "bob-strong-soul", name: "Strong Soul", category: "Magic", summary: "Resistances increased and you can physically interact with incorporeal entities.", description: "Disruptive force damage is reduced by a large amount, other damage is reduced by a small amount, increased curse, magic and unholy resistance. You can physically interact with incorporeal entities", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Abiity", "Dimension", "Magic", "passive"] },
-          { id: "bob-astral-palm", name: "Astral Palm", category: "Combat", summary: "Strike with a focused burst of astral force.", description: "Strike with a focused burst of astral force.", mana: 6, stamina: 20, cooldown: 1, tags: ["astral", "melee"] },
-          { id: "bob-comet-breaker", name: "Comet Breaker", category: "Combat", summary: "Drive a heavy blow into a foe like a falling star.", description: "Drive a heavy blow into a foe like a falling star.", mana: 10, stamina: 30, cooldown: 2, tags: ["impact", "sun"] },
-          { id: "bob-blood-counter", name: "Blood Counter", category: "Combat", summary: "Answer an incoming strike with a sharp counterattack.", description: "Answer an incoming strike with a sharp counterattack.", mana: 4, stamina: 18, cooldown: 1, tags: ["blood", "counter"] },
-          { id: "bob-prism-sweep", name: "Prism Sweep", category: "Combat", summary: "Sweep a bright arc across nearby opponents.", description: "Sweep a bright arc across nearby opponents.", mana: 12, stamina: 34, cooldown: 3, tags: ["sun", "area"] },
-          { id: "bob-reflective-stance", name: "Reflective Stance", category: "Combat", summary: "Set your stance to redirect a portion of the next blow.", description: "Set your stance to redirect a portion of the next blow.", mana: 14, stamina: 22, cooldown: 2, tags: ["mirror", "defense"] },
-          { id: "bob-sunstep", name: "Sunstep", category: "Technique", summary: "Dash forward in a flash of warm light.", description: "Dash forward in a flash of warm light.", mana: 0, stamina: 18, cooldown: 0, tags: ["movement", "sun"] },
-          { id: "bob-mirror-feint", name: "Mirror Feint", category: "Technique", summary: "Leave a false image to draw an enemy's attention.", description: "Leave a false image to draw an enemy's attention.", mana: 10, stamina: 12, cooldown: 1, tags: ["illusion", "mirror"] },
-          { id: "bob-cage-breaker", name: "Cage Breaker", category: "Technique", summary: "Find the weak point in a binding and tear free.", description: "Find the weak point in a binding and tear free.", mana: 5, stamina: 24, cooldown: 2, tags: ["cage", "escape"] },
-          { id: "bob-quick-reflection", name: "Quick Reflection", category: "Technique", summary: "Turn a practiced parry into a sudden reposition.", description: "Turn a practiced parry into a sudden reposition.", mana: 8, stamina: 14, cooldown: 1, tags: ["movement", "mirror"] },
-          { id: "bob-astral-focus", name: "Astral Focus", category: "Technique", summary: "A constant focus that sharpens your awareness of astral energy.", description: "A constant focus that sharpens your awareness of astral energy.", mana: 0, stamina: 0, cooldown: 0, tags: ["astral", "focus", "passive"] },
-          { id: "bob-shared-spark", name: "Shared Spark", category: "Support", summary: "Share a spark of your own energy to help an ally recover.", description: "Share a spark of your own energy to help an ally recover.", mana: 20, stamina: 10, cooldown: 2, tags: ["support", "mana"] },
-          { id: "bob-reflective-aegis", name: "Reflective Aegis", category: "Support", description: "Cover an ally in a protective mirrored sheen.", mana: 26, stamina: 8, cooldown: 3, tags: ["mirror", "warding"] },
-          { id: "bob-lantern-of-dawn", name: "Lantern of Dawn", category: "Support", description: "Fill the area with reassuring, radiant light.", mana: 20, stamina: 4, cooldown: 2, tags: ["sun", "support"] },
-          { id: "bob-open-the-cage", name: "Open the Cage", category: "Support", description: "Release an ally from a snare or restricting effect.", mana: 16, stamina: 10, cooldown: 2, tags: ["cage", "escape"] }
+          { id: "bob-strong-soul", name: "Strong Soul", category: "Magic", summary: "Resistances increased and you can physically interact with incorporeal entities.", description: "Disruptive force damage is reduced by a large amount, other damage is reduced by a small amount, increased curse, magic and unholy resistance. You can physically interact with incorporeal entities", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Abiity", "Dimension", "Magic", "passive"], statEffects: [
+            { id: "strong-soul-damage-resistance", stat: "damageResistance", bonus: "1D8", target: "self" },
+            { id: "strong-soul-magic-resistance", stat: "magicResistance", bonus: "1D8", target: "self" }
+          ] },
+          { id: "bob-mirror-magic", name: "Mirror Magic", category: "Mirror", summary: "Copy an ability an ally has used within the last turn", description: "Copy an ability an ally has used within the last turn. This ability has the same cost and cooldown as the original spell. Using this spell can increase or decrease the rank of the original spell to the rank of this spell, including gaining or losing effects. This also has a reduced cooldown and cost if the rank has been increased.", mana: "XX", stamina: "XX", cooldown: "XX", tags: ["Special Ability", "Magic", "Copy"] },
+          { id: "bob-vengeance-Mirror", name: "Vengeance Mirror", category: "Mirror", summary: "Copy an ability an enemy has used once or twice.", description: "Copy an ability an enemy has used once or twice, Cost and cooldown are the same as the original. You may still use this if the original was negated.", mana: "XX", stamina: "XX", cooldown: "XX", tags: ["Special Attack", "Copy", "Retributive"] },
+          { id: "bob-reflective-stance", name: "Reflective Stance", category: "Mirror", summary: "Increased damage resistance, if damage is fully blocked, it is reflected.", description: "The user braces for oncoming damage and receives an extra 1d8 of damage resistance until the user/'s next turn. If the user is hit by damage before the start of the user\'s next turn, the damage is reflected.", mana: 40, stamina: 40, cooldown: 0, tags: ["Special Ability", "Retributive"], variants: [
+            { id: "always-ready", name: "Always Ready", summary: "Bonus action", description: "Use Reflective Stance as a bonus action but inflict a 2 turn cooldown with an increased cost.", mana: 50, stamina: 50, cooldown: 2}
+          ] },
+          { id: "bob-enter-reflections", name: "Enter Reflections", category: "Mirror", summary: "Use reflections as a portal.", description: "Use reflections as a portal to another reflection you can see or is within your aura. Can be used as a bonus action.", mana: 10, stamina: 10, cooldown: 0, usesPerTurn: 2, tags: ["Special Ability", "Teleport", "Illusion"], variants: [
+            { id: "morph-reflections", name: "Morph Reflections", summary: "Morph the shape of Refections you can see", description: "Morph the shape of Refections you can see for an increased cost with a cooldown.", mana: 20, stamina: 20, cooldown: 1}
+          ] },
+          { id: "bob-self-actualisation", name: "Self Actualisation", category: "Mirror", summary: "Reduce stamina and mana costs.", description: "You have uncovered your flaws and resolved them; ALL stamina and mana costs reduced by 15. Your confidence has inspired your allies, their stamina and mana costs decrease by 5", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Boon", "passive"], costEffects: [
+            { id: "self-actualisation-self", mana: 15, stamina: 15, target: "self" },
+            { id: "self-actualisation-allies", mana: 5, stamina: 5, target: "others" }
+          ] },
+          { id: "bob-blood-harvest", name: "Blood Harvest", category: "Flesh", summary: "Drain dead bodies for resources.", description: "Drain the remnant life force of any bodies within your aura, replenishing health, stamina and mana. Only affects targets with blood and can't overcharge.", mana: 10, stamina: 0, cooldown: 0, tags: ["Spell", "Drain", "Boon"], resourceEffects: [
+            { id: "blood-harvest-health", resource: "health", amount: "XX", target: "self" },
+            { id: "blood-harvest-mana", resource: "mana", amount: "XX", target: "self" },
+            { id: "blood-harvest-stamina", resource: "stamina", amount: "XX", target: "self" }
+          ] },
+          { id: "bob-blood-magic", name: "Blood Magic", category: "Flesh", summary: "Consume your own life force to gain mana.", description: "Consume your own life force to gain mana. You can allso expend life force to enhance rituals, including essence abilities.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Drain", "Blood"], resourceEffects: [
+            { id: "blood-magic-health", resource: "health", amount: "XX", target: "self" },
+            { id: "blood-magic-mana", resource: "mana", amount: "XX", target: "self" }
+          ] },
+          { id: "bob-feast-of-blood", name: "Feast of Blood", category: "Flesh", summary: "Drain health and stamina from bleeding enemies.", description: "Drain health and stamina from bleeding enemies. Drains additional health and stamina. for each disease or curse on the target. \"Incantation: Your blood is not yours to keep but mine on which to feast\"", mana: 20, stamina: 0, cooldown: 5, tags: ["Spell", "Drain", "Blood"], resourceEffects: [
+            { id: "feast-of-blood-health", resource: "health", amount: "XX", target: "self" },
+            { id: "feast-of-blood-stamina", resource: "stamina", amount: "XX", target: "self" }
+          ] },
+          { id: "bob-flesh-mould", name: "Flesh Mould", category: "Flesh", summary: "You have more control over your body and can change how you look.", description: "You can change how you look at a long rest, you can also switch physical stats but you must stay humanoid.", mana: 80, stamina: 80, cooldown: 99, tags: ["Special Ability", "Shapeshift"] },
+          { id: "bob-sanguine-horror", name: "Sanguine Horror", category: "Flesh", summary: "A Leech swarm familiar with a bandaged human form. ", description: "A Leech swarm familiar with a bandaged human form. Bites from leeches or ranged grips from bandages inflict [Bleeding], [Leech Toxin] and [Necrotoxin]. Leech attacks aso drain HP and Stamina. \"Using\" this ability means John is subsumed within you and will heal 1 Hp per turn and 6 stamina per turn.", mana: 0, stamina: 0, cooldown: 0, tags: ["Summon", "Ritual", "Familiar"], resourceEffects: [
+            { id: "sanguine-horror-health", resource: "health", amount: 1, target: "self" },
+            { id: "sanguine-horror-stamina", resource: "stamina", amount: 6, target: "self" }
+          ] },
+          { id: "bob-mirage-step", name: "Mirage Step", category: "Doppelganger", summary: "Move instantly to a nearby location, leaving an afterimage.", description: "Move instantly to a nearby location, leaving an afterimage. Can be used twice, with one use regained every 6 turns after it is spent. When enemies attack an afterimage, they are trapped in a short lived illusion.", mana: 10, stamina: 10, cooldown: 0, charges: 2, recharge: 6, tags: ["Special Ability", "Dimension", "illusion", "movement"] },
+          { id: "bob-reflective-aegis", name: "Reflective Aegis", category: "Doppelganger", description: "Cover an ally in a protective mirrored sheen.", mana: 26, stamina: 8, cooldown: 3, tags: ["mirror", "warding"] },
+          { id: "bob-lantern-of-dawn", name: "Lantern of Dawn", category: "Doppelganger", description: "Fill the area with reassuring, radiant light.", mana: 20, stamina: 4, cooldown: 2, tags: ["sun", "support"] },
+          { id: "bob-open-the-cage", name: "Open the Cage", category: "Doppelganger", description: "Release an ally from a snare or restricting effect.", mana: 16, stamina: 10, cooldown: 2, tags: ["cage", "escape"] },
+          { id: "bob-open-the-cage", name: "Open the Cage", category: "Doppelganger", description: "Release an ally from a snare or restricting effect.", mana: 16, stamina: 10, cooldown: 2, tags: ["cage", "escape"] }
         ],
         racialGifts: [
           { id: "bob-mirror-born", name: "Mirror-born", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] }
@@ -512,6 +545,7 @@
 
     function statEffectTargets(effect, sourceCharacter) {
       if (effect.target === "self") return [sourceCharacter.id];
+      if (effect.target === "others") return CHARACTERS.filter((character) => character.id !== sourceCharacter.id).map((character) => character.id);
       if (effect.target === "party") return CHARACTERS.map((character) => character.id);
       if (["tagged", "self-and-tagged"].includes(effect.target) && Array.isArray(effect.tags)) {
         const targetTags = effect.tags.map((tag) => tag.trim().toLowerCase());
@@ -544,8 +578,38 @@
       );
     }
 
+    function getAbilityCostModifiers(character, resource) {
+      return CHARACTERS.flatMap((sourceCharacter) =>
+        allCharacterAbilities(sourceCharacter).flatMap((ability) =>
+          [ability, ...(ability.variants || [])].flatMap((configuration) => {
+            if (!configuration.tags?.includes("passive")) return [];
+            return (configuration.costEffects || [])
+              .filter((effect) =>
+                Number.isSafeInteger(effect[resource]) &&
+                effect[resource] > 0 &&
+                statEffectTargets(effect, sourceCharacter).includes(character.id)
+              )
+              .map((effect) => ({ amount: effect[resource], source: ability.name }));
+          })
+        )
+      );
+    }
+
+    function getEffectiveAbilityCost(character, resource, cost) {
+      const modifiers = getAbilityCostModifiers(character, resource);
+      const reduction = modifiers.reduce((total, modifier) => total + modifier.amount, 0);
+      if (typeof cost !== "number" || !Number.isFinite(cost)) {
+        return { cost, reduction, sources: [...new Set(modifiers.map((modifier) => modifier.source))] };
+      }
+      return {
+        cost: Math.max(0, cost - reduction),
+        reduction,
+        sources: [...new Set(modifiers.map((modifier) => modifier.source))]
+      };
+    }
+
     function getStatModifiers(character, stat) {
-      return state.activeStatEffects.flatMap((activeEffect) => {
+      const activeModifiers = state.activeStatEffects.flatMap((activeEffect) => {
         if (activeEffect.targetCharacterId !== character.id) return [];
         const effect = findConfiguredStatEffect(
           activeEffect.sourceCharacterId,
@@ -559,9 +623,20 @@
         return [{
           bonus: String(effect.bonus),
           source: ability.name,
-          remainingTurns: activeEffect.remainingTurns
+          detail: `${activeEffect.remainingTurns} turn${activeEffect.remainingTurns === 1 ? "" : "s"} remaining`
         }];
       });
+      const passiveModifiers = CHARACTERS.flatMap((sourceCharacter) =>
+        allCharacterAbilities(sourceCharacter).flatMap((ability) =>
+          [ability, ...(ability.variants || [])].flatMap((configuration) => {
+            if (!configuration.tags?.includes("passive")) return [];
+            return (configuration.statEffects || [])
+              .filter((effect) => effect.stat === stat && statEffectTargets(effect, sourceCharacter).includes(character.id))
+              .map((effect) => ({ bonus: String(effect.bonus), source: ability.name, detail: "Passive effect" }));
+          })
+        )
+      );
+      return [...activeModifiers, ...passiveModifiers];
     }
 
     function renderStatValue(character, stat) {
@@ -571,8 +646,7 @@
       const bonusText = modifiers.map((modifier) => {
         const bonus = modifier.bonus;
         const displayBonus = /^[+-]/.test(bonus) ? bonus : `+${bonus}`;
-        const turnText = `${modifier.remainingTurns} turn${modifier.remainingTurns === 1 ? "" : "s"} remaining`;
-        return `<span class="stat-modifier" title="${escapeHtml(modifier.source)} · ${turnText}">${escapeHtml(displayBonus)}</span>`;
+        return `<span class="stat-modifier" title="${escapeHtml(modifier.source)} · ${escapeHtml(modifier.detail)}">${escapeHtml(displayBonus)}</span>`;
       }).join("");
       return `${baseValue}${bonusText}`;
     }
@@ -608,7 +682,8 @@
             resources: { ...character.resources },
             cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
             activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
-            usedAbilities: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, false]))
+            chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
+            abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0]))
           }
         ]))
       };
@@ -646,10 +721,24 @@
             }
           }
         }
-        if (savedCharacter?.usedAbilities) {
+        if (savedCharacter?.chargeRecharges) {
           for (const ability of allCharacterAbilities(character)) {
-            initial.characters[character.id].usedAbilities[ability.id] =
-              savedCharacter.usedAbilities[ability.id] === true;
+            for (const configuration of [ability, ...(ability.variants || [])]) {
+              const key = abilityStateKey(ability, configuration === ability ? null : configuration);
+              const recharges = savedCharacter.chargeRecharges[key];
+              if (!Array.isArray(recharges) || !Number.isInteger(configuration.charges) || !Number.isInteger(configuration.recharge)) continue;
+              initial.characters[character.id].chargeRecharges[key] = recharges
+                .filter((turns) => Number.isInteger(turns) && turns > 0 && turns <= configuration.recharge)
+                .slice(0, configuration.charges);
+            }
+          }
+        }
+        if (savedCharacter?.abilityUsesThisTurn || savedCharacter?.usedAbilities) {
+          for (const ability of allCharacterAbilities(character)) {
+            const savedUseCount = savedCharacter.abilityUsesThisTurn?.[ability.id];
+            initial.characters[character.id].abilityUsesThisTurn[ability.id] = Number.isInteger(savedUseCount) && savedUseCount >= 0
+              ? savedUseCount
+              : savedCharacter.usedAbilities?.[ability.id] === true ? 1 : 0;
           }
         }
       }
@@ -1034,6 +1123,32 @@
       return variant ? { ...ability, ...variant, tags: [...new Set([...(ability.tags || []), ...(variant.tags || [])])] } : ability;
     }
 
+    function configurableAbilityFields(ability, isRacialGift) {
+      return [
+        ...(!isRacialGift && isConfigurableAbilityValue(ability.mana) ? ["mana"] : []),
+        ...(!isRacialGift && isConfigurableAbilityValue(ability.stamina) ? ["stamina"] : []),
+        ...(isConfigurableAbilityValue(ability.cooldown) ? ["cooldown"] : []),
+        ...(ability.resourceEffects || [])
+          .filter((effect) => isConfigurableAbilityValue(effect.amount))
+          .map((effect) => `resourceEffect:${effect.id}`)
+      ];
+    }
+
+    function isConfigurableAbilityValue(value) {
+      return typeof value === "string" && value.trim().toUpperCase() === "XX";
+    }
+
+    function abilityCostLabel(field, ability) {
+      if (field.startsWith("resourceEffect:")) {
+        const effectId = field.slice("resourceEffect:".length);
+        const effect = (ability.resourceEffects || []).find((entry) => entry.id === effectId);
+        const resource = effect?.resource;
+        const label = resource ? resource[0].toUpperCase() + resource.slice(1) : "Resource";
+        return `${label} change (negative spends)`;
+      }
+      return ({ mana: "Mana cost", stamina: "Stamina cost", cooldown: "Cooldown (turns)" })[field];
+    }
+
     function renderAbilityRow(character, ability, isRacialGift = false) {
       const progress = state.characters[character.id];
       const selectedAbility = selectedAbilityFor(character, ability);
@@ -1042,18 +1157,40 @@
       const passive = !isRacialGift && selectedAbility.tags.includes("passive");
       const manaCost = isRacialGift ? 0 : selectedAbility.mana;
       const staminaCost = isRacialGift ? 0 : selectedAbility.stamina;
+      const manaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "mana", manaCost);
+      const staminaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "stamina", staminaCost);
       const cooldown = progress.cooldowns[stateKey] || 0;
       const activeTurns = progress.activeTurns[stateKey] || 0;
-      const usedThisTurn = progress.usedAbilities[ability.id] === true;
-      const enoughMana = progress.resources.mana >= manaCost;
-      const enoughStamina = progress.resources.stamina >= staminaCost;
-      const disabled = passive || usedThisTurn || cooldown > 0 || activeTurns > 0 || !enoughMana || !enoughStamina;
-      const reason = passive ? "" : usedThisTurn ? "Already used this turn" : activeTurns > 0 ? `Active for ${activeTurns} more turn${activeTurns === 1 ? "" : "s"}` : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
+      const chargeRecharges = progress.chargeRecharges?.[stateKey] || [];
+      const hasCharges = Number.isInteger(selectedAbility.charges) && selectedAbility.charges > 0 &&
+        Number.isInteger(selectedAbility.recharge) && selectedAbility.recharge > 0;
+      const availableCharges = hasCharges ? Math.max(0, selectedAbility.charges - chargeRecharges.length) : null;
+      const usesPerTurn = Number.isInteger(selectedAbility.usesPerTurn) && selectedAbility.usesPerTurn > 0
+        ? selectedAbility.usesPerTurn
+        : 1;
+      const usesThisTurn = progress.abilityUsesThisTurn?.[ability.id] || 0;
+      const enoughMana = isConfigurableAbilityValue(manaCost) || progress.resources.mana >= manaEffect.cost;
+      const enoughStamina = isConfigurableAbilityValue(staminaCost) || progress.resources.stamina >= staminaEffect.cost;
+      const outOfCharges = hasCharges && availableCharges === 0;
+      const nextChargeIn = outOfCharges ? Math.min(...chargeRecharges) : null;
+      const turnUsesExhausted = usesThisTurn >= usesPerTurn;
+      const disabled = passive || turnUsesExhausted || cooldown > 0 || activeTurns > 0 || outOfCharges || !enoughMana || !enoughStamina;
+      const reason = passive ? "" : turnUsesExhausted ? "Uses for this turn spent" : activeTurns > 0 ? `Active for ${activeTurns} more turn${activeTurns === 1 ? "" : "s"}` : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : outOfCharges ? `Next use in ${nextChargeIn} turn${nextChargeIn === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
+      const manaTooltip = manaEffect.sources.length ? ` title="Reduced by ${escapeHtml(manaEffect.sources.join(", "))}"` : "";
+      const staminaTooltip = staminaEffect.sources.length ? ` title="Reduced by ${escapeHtml(staminaEffect.sources.join(", "))}"` : "";
+      const resourceEffectChips = (selectedAbility.resourceEffects || []).map((effect) => {
+        const resource = effect.resource[0].toUpperCase() + effect.resource.slice(1);
+        const amount = isConfigurableAbilityValue(effect.amount) ? "set on use" : `+${effect.amount}`;
+        return `<span class="cost-chip active-chip">${escapeHtml(resource)} ${escapeHtml(amount)}</span>`;
+      }).join("");
       const costs = passive ? '<span class="cost-chip passive-chip">Passive</span>' : [
-        manaCost > 0 ? `<span class="cost-chip">◈ ${manaCost} mana</span>` : "",
-        staminaCost > 0 ? `<span class="cost-chip stamina">⌁ ${staminaCost} stamina</span>` : "",
-        selectedAbility.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${selectedAbility.cooldown} turn${selectedAbility.cooldown === 1 ? "" : "s"} CD</span>` : "",
-        selectedAbility.duration > 0 ? `<span class="cost-chip active-chip">◉ ${selectedAbility.duration} turn${selectedAbility.duration === 1 ? "" : "s"} active</span>` : ""
+        isConfigurableAbilityValue(manaCost) ? `<span class="cost-chip"${manaTooltip}>◈ Mana: set on use${manaEffect.reduction ? ` (−${manaEffect.reduction})` : ""}</span>` : manaCost > 0 ? `<span class="cost-chip"${manaTooltip}>◈ ${manaEffect.cost} mana${manaEffect.reduction ? ` (was ${manaCost})` : ""}</span>` : "",
+        isConfigurableAbilityValue(staminaCost) ? `<span class="cost-chip stamina"${staminaTooltip}>⌁ Stamina: set on use${staminaEffect.reduction ? ` (−${staminaEffect.reduction})` : ""}</span>` : staminaCost > 0 ? `<span class="cost-chip stamina"${staminaTooltip}>⌁ ${staminaEffect.cost} stamina${staminaEffect.reduction ? ` (was ${staminaCost})` : ""}</span>` : "",
+        isConfigurableAbilityValue(selectedAbility.cooldown) ? '<span class="cost-chip cooldown">↻ Cooldown: set on use</span>' : selectedAbility.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${selectedAbility.cooldown} turn${selectedAbility.cooldown === 1 ? "" : "s"} CD</span>` : "",
+        selectedAbility.duration > 0 ? `<span class="cost-chip active-chip">◉ ${selectedAbility.duration} turn${selectedAbility.duration === 1 ? "" : "s"} active</span>` : "",
+        hasCharges ? `<span class="cost-chip cooldown">↻ ${availableCharges}/${selectedAbility.charges} uses${chargeRecharges.length ? ` · next in ${Math.min(...chargeRecharges)} turn${Math.min(...chargeRecharges) === 1 ? "" : "s"}` : ""}</span>` : "",
+        usesPerTurn > 1 ? `<span class="cost-chip cooldown">↻ ${usesPerTurn} uses per turn</span>` : "",
+        resourceEffectChips
       ].filter(Boolean).join("");
       const tags = (selectedAbility.tags || []).filter((tag) => tag !== "passive" && !tag.startsWith("variant:"))
         .map((tag) => `<span class="ability-tag">#${escapeHtml(tag)}</span>`).join("");
@@ -1062,13 +1199,13 @@
       const variantControl = variants.length ? `<label><span class="section-helper">Variant </span><select class="variant-select" data-variant-character="${escapeHtml(character.id)}" data-variant-ability="${escapeHtml(ability.id)}" aria-label="${escapeHtml(ability.name)} variant"><option value="">Standard</option>${variants.map((variant) => `<option value="${escapeHtml(variant.id)}" ${variant.id === chosenVariantId ? "selected" : ""}>${escapeHtml(variant.name)}</option>`).join("")}</select></label>` : "";
       return `<div class="ability-row">
         <div>${variantControl}<div class="ability-name">${escapeHtml(ability.name)}</div>${renderAbilityDescription(selectedAbility)}<div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
-        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${usedThisTurn ? "Used this turn" : activeTurns > 0 ? "Active" : cooldown > 0 ? "Cooling down" : isRacialGift ? "Use gift" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
+        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${turnUsesExhausted ? "Uses spent this turn" : usesThisTurn > 0 ? `Use again (${usesThisTurn}/${usesPerTurn})` : activeTurns > 0 ? "Active" : cooldown > 0 ? "Cooling down" : isRacialGift ? "Use gift" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
       </div>`;
     }
 
     function renderAbilities(character) {
       return `<section class="ability-section">
-        <div class="ability-heading"><div><div class="section-title">Abilities by essence</div><div class="section-helper" style="margin-top:5px">Each ability can be used once per owner turn. Click afflictions for their glossary entry.</div></div><div class="section-helper">${character.abilities.length} personal abilities</div></div>
+        <div class="ability-heading"><div><div class="section-title">Abilities by essence</div><div class="section-helper" style="margin-top:5px">Abilities are limited to one use per owner turn unless configured for more. Values marked “set on use” are entered when activated. Click afflictions for their glossary entry.</div></div><div class="section-helper">${character.abilities.length} personal abilities</div></div>
         <div class="essence-ability-groups">${character.essences.map((essence) => {
           const abilities = character.abilities.filter((ability) => essenceForAbility(character, ability) === essence);
           return `<div class="ability-group">
@@ -1173,7 +1310,25 @@
       render();
     }
 
-    function useAbility(abilityId) {
+    function showAbilityCostForm(abilityId, abilityName, fields, ability) {
+      const inputs = fields.map((field) => `<label class="ability-cost-input">
+        <span>${escapeHtml(abilityCostLabel(field, ability))}</span>
+        <input type="number" name="${field}" ${field.startsWith("resourceEffect:") ? "" : 'min="0"'} step="1" inputmode="numeric" required>
+      </label>`).join("");
+      const root = document.getElementById("modal-root");
+      root.innerHTML = `<div class="modal-backdrop" data-dismiss-modal>
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="ability-cost-title">
+          <h2 id="ability-cost-title">${escapeHtml(abilityName)} · Set values</h2>
+          <p>Enter the values for this use. Active cost-reduction effects are applied before resources are spent.</p>
+          <form data-configurable-ability="${escapeHtml(abilityId)}">
+            <div class="ability-cost-inputs">${inputs}</div>
+            <div class="modal-actions"><button class="button" type="button" data-action="cancel-ability-costs">Cancel</button><button class="button primary" type="submit">Use ability</button></div>
+          </form>
+        </section></div>`;
+      root.querySelector("input")?.focus();
+    }
+
+    function useAbility(abilityId, suppliedValues = {}) {
       const character = getSelectedCharacter();
       const progress = state.characters[character.id];
       const configuredAbility = allCharacterAbilities(character).find((entry) => entry.id === abilityId);
@@ -1186,21 +1341,95 @@
         notify(`${ability.name} has an invalid stat effect configuration. Check the code.`);
         return;
       }
+      const resourceEffects = ability.resourceEffects || [];
+      const validResources = ["health", "mana", "stamina"];
+      const invalidResourceEffect = resourceEffects.find((effect) =>
+        !effect ||
+        typeof effect.id !== "string" ||
+        !effect.id.trim() ||
+        !validResources.includes(effect.resource) ||
+        !(isConfigurableAbilityValue(effect.amount) || Number.isSafeInteger(effect.amount)) ||
+        !["self", "party", "others", "tagged", "self-and-tagged"].includes(effect.target) ||
+        (["tagged", "self-and-tagged"].includes(effect.target) &&
+          (!Array.isArray(effect.tags) || !effect.tags.length || !effect.tags.every((tag) => typeof tag === "string" && tag.trim())))
+      );
+      if (invalidResourceEffect) {
+        console.error(`Invalid resource effect configured for ${character.name}'s ${ability.name}.`, invalidResourceEffect);
+        notify(`${ability.name} has an invalid resource effect configuration. Check the code.`);
+        return;
+      }
       const isRacialGift = (character.racialGifts || []).some((gift) => gift.id === abilityId);
       const stateKey = abilityStateKey(configuredAbility, ability.id === configuredAbility.id ? null : ability);
+      const chargeRecharges = progress.chargeRecharges?.[stateKey] || [];
+      const hasCharges = Number.isInteger(ability.charges) && ability.charges > 0 &&
+        Number.isInteger(ability.recharge) && ability.recharge > 0;
+      const usesPerTurn = Number.isInteger(ability.usesPerTurn) && ability.usesPerTurn > 0
+        ? ability.usesPerTurn
+        : 1;
       if (
-        progress.usedAbilities[abilityId] ||
+        (progress.abilityUsesThisTurn?.[abilityId] || 0) >= usesPerTurn ||
         (progress.cooldowns[stateKey] || 0) > 0 ||
-        (progress.activeTurns[stateKey] || 0) > 0
+        (progress.activeTurns[stateKey] || 0) > 0 ||
+        (hasCharges && chargeRecharges.length >= ability.charges)
       ) return;
       const manaCost = isRacialGift ? 0 : ability.mana;
       const staminaCost = isRacialGift ? 0 : ability.stamina;
-      if (progress.resources.mana < manaCost || progress.resources.stamina < staminaCost) return;
+      const configurableFields = configurableAbilityFields(ability, isRacialGift);
+      if (configurableFields.some((field) => !Object.hasOwn(suppliedValues, field))) {
+        showAbilityCostForm(abilityId, ability.name, configurableFields, ability);
+        return false;
+      }
+      const resolvedResourceEffects = resourceEffects.map((effect) => ({
+        ...effect,
+        amount: isConfigurableAbilityValue(effect.amount)
+          ? suppliedValues[`resourceEffect:${effect.id}`]
+          : effect.amount
+      }));
+      if (resolvedResourceEffects.some((effect) => !Number.isSafeInteger(effect.amount))) {
+        notify("Resource changes must be whole numbers.");
+        return false;
+      }
+      const baseCosts = {
+        mana: isRacialGift ? 0 : isConfigurableAbilityValue(manaCost) ? suppliedValues.mana : manaCost ?? 0,
+        stamina: isRacialGift ? 0 : isConfigurableAbilityValue(staminaCost) ? suppliedValues.stamina : staminaCost ?? 0
+      };
+      const resolvedValues = {
+        mana: getEffectiveAbilityCost(character, "mana", baseCosts.mana).cost,
+        stamina: getEffectiveAbilityCost(character, "stamina", baseCosts.stamina).cost,
+        cooldown: isConfigurableAbilityValue(ability.cooldown) ? suppliedValues.cooldown : ability.cooldown ?? 0
+      };
+      if (Object.values(resolvedValues).some((value) => !Number.isSafeInteger(value) || value < 0)) {
+        notify("Mana, stamina, and cooldown values must be whole numbers of zero or more.");
+        return false;
+      }
+      if (progress.resources.mana < resolvedValues.mana || progress.resources.stamina < resolvedValues.stamina) {
+        notify("Not enough mana or stamina for those configured costs.");
+        return false;
+      }
 
-      progress.resources.mana -= manaCost;
-      progress.resources.stamina -= staminaCost;
-      progress.usedAbilities[abilityId] = true;
-      progress.cooldowns[stateKey] = ability.cooldown;
+      progress.resources.mana -= resolvedValues.mana;
+      progress.resources.stamina -= resolvedValues.stamina;
+      if (hasCharges) {
+        progress.chargeRecharges ??= {};
+        progress.chargeRecharges[stateKey] ??= [];
+        progress.chargeRecharges[stateKey].push(ability.recharge);
+      }
+      for (const effect of resolvedResourceEffects) {
+        for (const targetCharacterId of statEffectTargets(effect, character)) {
+          const targetCharacter = characterById(targetCharacterId);
+          const targetResources = state.characters[targetCharacterId].resources;
+          targetResources[effect.resource] = Math.max(
+            0,
+            Math.min(
+              targetCharacter.resources[effect.resource],
+              targetResources[effect.resource] + effect.amount
+            )
+          );
+        }
+      }
+      progress.abilityUsesThisTurn ??= {};
+      progress.abilityUsesThisTurn[abilityId] = (progress.abilityUsesThisTurn[abilityId] || 0) + 1;
+      progress.cooldowns[stateKey] = resolvedValues.cooldown;
       progress.activeTurns[stateKey] = Math.max(0, ability.duration || 0);
       for (const effect of ability.statEffects || []) {
         for (const targetCharacterId of statEffectTargets(effect, character)) {
@@ -1218,6 +1447,7 @@
       saveCampaign();
       render();
       notify(`${ability.name} used${ability.duration ? ` for ${ability.duration} turns` : ""} — ${character.name}'s resources updated.`);
+      return true;
     }
 
     function endTurn() {
@@ -1231,6 +1461,11 @@
         for (const configuration of configurations) {
           if (configuration.tags?.includes("passive")) continue;
           const stateKey = abilityStateKey(ability, configuration === ability ? null : configuration);
+          if (progress.chargeRecharges?.[stateKey]?.length) {
+            progress.chargeRecharges[stateKey] = progress.chargeRecharges[stateKey]
+              .map((turns) => turns - 1)
+              .filter((turns) => turns > 0);
+          }
           if (progress.activeTurns[stateKey] > 0) {
             progress.activeTurns[stateKey] -= 1;
             continue;
@@ -1238,8 +1473,8 @@
           progress.cooldowns[stateKey] = Math.max(0, (progress.cooldowns[stateKey] || 0) - 1);
         }
       }
-      progress.usedAbilities = Object.fromEntries(
-        allCharacterAbilities(character).map((ability) => [ability.id, false])
+      progress.abilityUsesThisTurn = Object.fromEntries(
+        allCharacterAbilities(character).map((ability) => [ability.id, 0])
       );
       state.activeStatEffects = state.activeStatEffects.flatMap((effect) => {
         if (effect.targetCharacterId !== character.id) return [effect];
@@ -1262,7 +1497,8 @@
           resources: { ...character.resources },
           cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
           activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
-          usedAbilities: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, false]))
+          chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
+          abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0]))
         };
       }
       state.activeStatEffects = [];
@@ -1359,11 +1595,23 @@
       if (action === "confirm-reset") showResetConfirmation();
       if (action === "cancel-reset") document.getElementById("modal-root").innerHTML = "";
       if (action === "close-glossary") document.getElementById("modal-root").innerHTML = "";
+      if (action === "cancel-ability-costs") document.getElementById("modal-root").innerHTML = "";
       if (action === "reset") {
         document.getElementById("modal-root").innerHTML = "";
         resetCampaign();
       }
       if (target.matches("[data-dismiss-modal]")) document.getElementById("modal-root").innerHTML = "";
+    });
+
+    document.addEventListener("submit", (event) => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || !form.matches("[data-configurable-ability]")) return;
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(form).entries());
+      for (const [field, value] of Object.entries(values)) values[field] = Number(value);
+      if (useAbility(form.dataset.configurableAbility, values)) {
+        document.getElementById("modal-root").innerHTML = "";
+      }
     });
 
     // Variant selection changes only this device's sheet preference; game state remains shared.
