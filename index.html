@@ -172,6 +172,8 @@
     .resource-fill.stamina { background: linear-gradient(90deg, #5c805b, #91b88b); }
     .resource-controls { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
     .resource-number { min-width: 50px; color: var(--text); font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+    .resource-adjustment { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .resource-adjustment input { width: 58px; padding: 5px 6px; border: 1px solid var(--line-bright); border-radius: 6px; background: #171a19; color: var(--text); font: inherit; font-size: 11px; }
     .mini-button { width: 23px; height: 23px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: #222624; color: var(--muted); cursor: pointer; }
     .mini-button:hover { border-color: var(--line-bright); color: var(--text); }
     .stats-panel { margin-top: 14px; padding: 17px; }
@@ -336,7 +338,7 @@
       {
         id: "Jamez", name: "Bob Smith", race: "Smoulder", magicspecialty: "Astral",
         rank: "Bronze", initials: "BS", color: "#d8aa67", avatarBg: "#352b1e",
-        resources: { health: 50, mana: 300, stamina: 300 },
+        resources: { health: 50, mana: 300, stamina: 64 },
         stats: { manaRecovery: 12, staminaRecovery: 150, physicalAttack: "2D8-2", damageResistance: "4D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
         essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
         abilities: [
@@ -345,9 +347,9 @@
             { id: "spirit-reaper-magic", stat: "magic", bonus: "1D8", duration: 1, target: "self" },
             { id: "spirit-reaper-attack", stat: "physicalAttack", bonus: "1D8", duration: 1, target: "self" }
           ] },
-          { id: "bob-solar-cage", name: "Solar Cage", category: "Arcana", summary: "Trap a foe inside a lattice of blazing light.", description: "Trap a foe inside a lattice of blazing light.", mana: 42, stamina: 8, cooldown: 3, tags: ["cage", "sun"] },
-          { id: "bob-starlit-chain", name: "Starlit Chain", category: "Arcana", summary: "Bind a target with a chain of astral energy.", description: "Bind a target with a chain of astral energy.", mana: 34, stamina: 0, cooldown: 2, tags: ["cage", "binding"], duration: 2 },
-          { id: "bob-refraction-step", name: "Refraction Step", category: "Arcana", summary: "Slip through a reflection and reappear nearby.", description: "Slip through a reflection and reappear nearby.", mana: 18, stamina: 12, cooldown: 1, tags: ["movement", "illusion"] },
+          { id: "bob-juxtapose", name: "Juxtapose", category: "Magic", summary: "Swap the location of two entities.", description: "Swap the location of two allies and/or enemies. You must be able to see both subjects. If an ally resists or prevents it, it is negated.Enemies affected by this ability take +10% from all sources for 1 turn.", mana: 40, stamina: 8, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
+          { id: "bob-power-lock", name: "Power Lock", category: "Magic", summary: "When the target uses an ability, a second one goes on cooldown.", description: "When the target uses an ability, a random other ability goes on cooldown and uses mana, as if it has been used, if the ability had no mana cost, the target suffers disruptive-force damage commensurate with the strength of the ability. If the target has no other abilities, the ability it used has doubled cooldown, or if the ability has no cooldown, it becomes unavailable for a brief period.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Curse", "Magic"] },
+          { id: "bob-strong-soul", name: "Strong Soul", category: "Magic", summary: "Resistances increased and you can physically interact with incorporeal entities.", description: "Disruptive force damage is reduced by a large amount, other damage is reduced by a small amount, increased curse, magic and unholy resistance. You can physically interact with incorporeal entities", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Abiity", "Dimension", "Magic", "passive"] },
           { id: "bob-astral-palm", name: "Astral Palm", category: "Combat", summary: "Strike with a focused burst of astral force.", description: "Strike with a focused burst of astral force.", mana: 6, stamina: 20, cooldown: 1, tags: ["astral", "melee"] },
           { id: "bob-comet-breaker", name: "Comet Breaker", category: "Combat", summary: "Drive a heavy blow into a foe like a falling star.", description: "Drive a heavy blow into a foe like a falling star.", mana: 10, stamina: 30, cooldown: 2, tags: ["impact", "sun"] },
           { id: "bob-blood-counter", name: "Blood Counter", category: "Combat", summary: "Answer an incoming strike with a sharp counterattack.", description: "Answer an incoming strike with a sharp counterattack.", mana: 4, stamina: 18, cooldown: 1, tags: ["blood", "counter"] },
@@ -712,6 +714,7 @@
 
     let state = loadCampaign();
     let toastTimer;
+    let resourceAdjustmentAmount = "1";
     let remoteCampaignRef = null;
     let remoteSet = null;
     let applyingRemoteState = false;
@@ -964,9 +967,9 @@
         <div class="resource-title">${label}<small>Max ${maximum}</small></div>
         <div class="resource-track" aria-label="${label} ${current} of ${maximum}"><div class="resource-fill ${key}" style="width:${resourcePercent(character, key)}%"></div></div>
         <div class="resource-controls">
-          <button class="mini-button" data-resource="${key}" data-delta="-1" aria-label="Decrease ${label}">−</button>
+          <button class="mini-button" data-resource="${key}" data-delta="-1" aria-label="Decrease ${label} by adjustment amount">−</button>
           <span class="resource-number">${current} / ${maximum}</span>
-          <button class="mini-button" data-resource="${key}" data-delta="1" aria-label="Increase ${label}">+</button>
+          <button class="mini-button" data-resource="${key}" data-delta="1" aria-label="Increase ${label} by adjustment amount">+</button>
         </div>
       </div>`;
     }
@@ -1097,7 +1100,7 @@
               ${getCurrentCharacter().id === character.id ? '<span class="turn-tag">CURRENT TURN</span>' : ""}
             </div>
             <section class="panel resource-panel">
-              <div class="section-head" style="margin:0"><div class="section-title">Resources</div><div class="section-helper">Use + / − to adjust</div></div>
+              <div class="section-head" style="margin:0"><div class="section-title">Resources</div><label class="resource-adjustment">Adjust by <input type="number" min="1" step="1" inputmode="numeric" value="${escapeHtml(resourceAdjustmentAmount)}" data-resource-adjustment aria-label="Resource adjustment amount"></label></div>
               <div class="resource-list">
                 ${resourceControl(character, "health", "Health")}
                 ${resourceControl(character, "mana", "Mana")}
@@ -1329,7 +1332,13 @@
 
       const resourceButton = target.closest("[data-resource]");
       if (resourceButton) {
-        setResource(state.selectedId, resourceButton.dataset.resource, Number(resourceButton.dataset.delta));
+        const amount = Number(document.querySelector("[data-resource-adjustment]")?.value);
+        if (!Number.isSafeInteger(amount) || amount < 1) {
+          notify("Enter a whole number greater than zero for the resource adjustment.");
+          document.querySelector("[data-resource-adjustment]")?.focus();
+          return;
+        }
+        setResource(state.selectedId, resourceButton.dataset.resource, Number(resourceButton.dataset.delta) * amount);
         return;
       }
 
@@ -1360,8 +1369,19 @@
     // Variant selection changes only this device's sheet preference; game state remains shared.
     document.addEventListener("change", (event) => {
       const target = event.target;
+      if (target instanceof HTMLInputElement && target.matches("[data-resource-adjustment]")) {
+        resourceAdjustmentAmount = target.value;
+        return;
+      }
       if (!(target instanceof HTMLSelectElement) || !target.matches("[data-variant-character]")) return;
       selectAbilityVariant(target.dataset.variantCharacter, target.dataset.variantAbility, target.value);
+    });
+
+    document.addEventListener("input", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLInputElement && target.matches("[data-resource-adjustment]")) {
+        resourceAdjustmentAmount = target.value;
+      }
     });
 
     // Allow keyboard activation on overview character cards, in addition to mouse/touch.
