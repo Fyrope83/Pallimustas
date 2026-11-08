@@ -223,6 +223,11 @@
     .essence-ability-group { min-width: 0; }
     .essence-ability-group .ability-row { grid-template-columns: minmax(0, 1fr) auto; }
     .racial-gifts-section { margin-top: 20px; }
+    .equipment-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .equipment-attack-log { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .equipment-attack-entry + .equipment-attack-entry { margin-top: 3px; }
+    .equipment-row { align-items: start; }
+    .equipment-row .ability-description { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.5; }
     .variant-select { max-width: 190px; margin-top: 7px; padding: 5px 8px; border: 1px solid var(--line-bright); border-radius: 6px; background: #171a19; color: var(--text); font: inherit; font-size: 9px; }
     .passive-label { color: #b6a4ce; font-size: 9px; letter-spacing: .1em; }
     .ability-costs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
@@ -340,6 +345,9 @@
      * Ability variants are separate configurations nested on the ability, not separate category entries.
      * Variant fields override the base ability fields; set duration to keep a cooldown paused while the effect is active. \
      * Racial gifts are free to use and may have cooldown and duration fields.
+     * Configure each character's equipment as [{ id, name, type, description, attack, statEffects }].
+     * Use type: "weapon" to show an Attack button; attack is display text only. Equipped statEffects use { id, stat, bonus }.
+     * Example: { id: "iron-sword", name: "Iron Sword", type: "weapon", attack: "1D8", statEffects: [{ id: "iron-sword-attack", stat: "physicalAttack", bonus: "1D8" }] }.
      * Active abilities default to one use per owner turn.
      * Set usesPerTurn above 1 for an ability that can be used multiple times on its owner's turn.
      * Abilities may define charges and recharge; each spent charge restores after that many owner turns.
@@ -351,7 +359,7 @@
         id: "Jamez", name: "Bob Smith", race: "Smoulder", magicspecialty: "Astral",
         rank: "Bronze", initials: "BS", color: "#d8aa67", avatarBg: "#352b1e",
         resources: { health: 50, mana: 300, stamina: 300 },
-        stats: { manaRecovery: 12, staminaRecovery: 64, physicalAttack: "2D8-2", damageResistance: "2D8-1", magic: "3D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
+        stats: { manaRecovery: 12, staminaRecovery: 64, physicalAttack: "2D8-2", damageResistance: "2D8", magic: "3D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
         essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
         abilities: [
           { id: "bob-teleport", name: "Teleport", category: "Magic", summary: "Teleport to a point within sight.", description: "Teleports the user to a point within sight, with a maximum limit of 100 km, and You can also teleport essence users of Bronze rank and below with you for a cost of +5 per person; Iron rankers and below don\'t have a mana cost to teleport", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
@@ -391,7 +399,7 @@
             { id: "feast-of-blood-stamina", resource: "stamina", amount: "XX", target: "self" }
           ] },
           { id: "bob-flesh-mould", name: "Flesh Mould", category: "Flesh", summary: "You have more control over your body and can change how you look.", description: "You can change how you look at a long rest, you can also switch physical stats but you must stay humanoid.", mana: 80, stamina: 80, cooldown: 99, tags: ["Special Ability", "Shapeshift"] },
-          { id: "bob-sanguine-horror", name: "Sanguine Horror", category: "Flesh", summary: "A Leech swarm familiar with a bandaged human form. ", description: "A Leech swarm familiar with a bandaged human form. Bites from leeches or ranged grips from bandages inflict [Bleeding], [Leech Toxin] and [Necrotoxin]. Leech attacks aso drain HP and Stamina. \"Using\" this ability means John is subsumed within you and will heal 1 Hp per turn and 6 stamina per turn.", mana: 0, stamina: 0, cooldown: 0, tags: ["Summon", "Ritual", "Familiar"], resourceEffects: [
+          { id: "bob-sanguine-horror", name: "John(Sanguine Horror)", category: "Flesh", summary: "A Leech swarm familiar with a bandaged human form. ", description: "A Leech swarm familiar with a bandaged human form. Bites from leeches or ranged grips from bandages inflict [Bleeding], [Leech Toxin] and [Necrotoxin]. Leech attacks aso drain HP and Stamina. \"Using\" this ability means John is subsumed within you and will heal 1 Hp per turn and 6 stamina per turn.", mana: 0, stamina: 0, cooldown: 0, tags: ["Summon", "Ritual", "Familiar"], resourceEffects: [
             { id: "sanguine-horror-health", resource: "health", amount: 1, target: "self" },
             { id: "sanguine-horror-stamina", resource: "stamina", amount: 6, target: "self" }
           ] },
@@ -403,6 +411,9 @@
           { id: "bob-unexpected-allies", name: "Unexpected Allies", category: "Doppelganger", summary: "Switch positions of all enemies and allies.", description: "You and your allies take an illusionary form of nearby enemies for a minute but you can all still recognise each other, everyone is randomly switch teleported. Also create illusions of your allies", mana: 60, stamina: 0, cooldown: 100, tags: ["Special Ability", "Dimension", "illusion", "Teleport"] },
           { id: "bob-echo-spirit", name: "Echo Spirit", category: "Doppelganger", summary: "An Incorporeal entity that can mimic the form of allies and enemies.", description: "An incorporeal entity that can mimic the form of allies and enemies as well as switch teleport with mimicked allies as well as mirroring ally's movements and attacks but can't inflict damage. While subsumed into the summoners aura, the summoner can manipulate it into projecting false traits, mimicking others auras or can be used to lift objects lighter than 10kg", mana: 0, stamina: 0, cooldown: 0, tags: ["Ritual", "Familiar", "passive"] },
           { id: "bob-seeing-double", name: "Seeing Double", category: "Doppelganger", summary: "Decrease perception of enemies within your aura.", description: "Decrease perception of enemies within your aura and you can see through illusions upto bronze rank.", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Perception", "Illusion", "passive"] }
+        ],
+        equipment: [
+          { id: "iron-sword", name: "Iron Sword", type: "weapon", attack: "1D8", statEffects: [{ id: "sword-attack", stat: "physicalAttack", bonus: "1D8" }] }
         ],
         racialGifts: [
           { id: "bob-strengthened-flesh", name: "Strengthened Flesh", summary: "Increased damage resistance.", description: "Your Smoulder ancestry and flesh powers have mutated you into a combination of both; you have increased damage resistance.", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental", "Buff", "passive"], statEffects: [
@@ -455,6 +466,7 @@
           { id: "garran-earthward", name: "Earthward", category: "Support", description: "Raise a low earthen ridge to shelter nearby allies.", mana: 20, stamina: 8, cooldown: 3, tags: ["root", "defense"] },
           { id: "garran-thunder-call", name: "Thunder Call", category: "Support", description: "Sound a resonant call that steadies the whole party.", mana: 14, stamina: 10, cooldown: 2, tags: ["thunder", "support"] }
         ],
+        equipment: [],
         racialGifts: [
           { id: "garran-stone-blood", name: "Stoneblood", description: "Harden your stonekin hide against the next blow.", cooldown: 3, duration: 2, tags: ["root", "defense"] }
         ]
@@ -489,6 +501,7 @@
           { id: "sera-blood-offering", name: "Blood Offering", category: "Support", description: "Give up a little vitality to restore an ally's strength.", mana: 14, stamina: 8, cooldown: 3, tags: ["blood", "healing"] },
           { id: "sera-quiet-company", name: "Quiet Company", category: "Support", description: "Soothe an ally with a familiar voice carried on the wind.", mana: 20, stamina: 0, cooldown: 2, tags: ["echo", "support"] }
         ],
+        equipment: [],
         racialGifts: [
           { id: "sera-veilborn-step", name: "Veilborn Step", description: "Slip into the veil and emerge from a nearby shadow.", cooldown: 3, duration: 1, tags: ["movement", "illusion"] }
         ]
@@ -523,6 +536,7 @@
           { id: "orin-ash-cleansing", name: "Ash Cleansing", category: "Support", description: "Use sacred ash to clear a lingering affliction.", mana: 22, stamina: 4, cooldown: 2, tags: ["ash", "cleansing"] },
           { id: "orin-share-the-light", name: "Share the Light", category: "Support", description: "Lend a companion a spark of your solar reserve.", mana: 16, stamina: 6, cooldown: 2, tags: ["light", "support"] }
         ],
+        equipment: [],
         racialGifts: [
           { id: "orin-dawnkin-aura", name: "Dawnkin Aura", description: "Surround yourself and nearby allies with a renewing dawnlight.", cooldown: 4, duration: 2, tags: ["light", "healing"] }
         ]
@@ -535,6 +549,18 @@
       stunned: {
         name: "Stunned",
         description: "The target is unable to act until the effect expires."
+      },
+      bleeding: {
+        name: "Bleeding",
+        description: "takes 1D6 damage at the start of each turn, this condition absorbs healing, after which it expires."
+      },
+      "leech toxin": {
+        name: "Leech Toxin",
+        description: "When bleeding is negated, an instance of [leech toxin] is consumed to reapply bleeding. Additional instances can be accumulated."
+      },
+      necrotoxin: {
+        name: "Necrotoxin",
+        description: "Inflicts 1D6 damage at the start of each turn for each instance of this affliction until poison is cleansed."
       }
     };
     const STORAGE_KEY = "pallimustas-campaign-v1";
@@ -659,7 +685,13 @@
           })
         )
       );
-      return [...activeModifiers, ...passiveModifiers];
+      const equippedItemIds = new Set(state.characters[character.id].equippedEquipment || []);
+      const equipmentModifiers = (character.equipment || [])
+        .filter((item) => equippedItemIds.has(item.id))
+        .flatMap((item) => (item.statEffects || [])
+          .filter((effect) => effect.stat === stat && typeof effect.bonus === "string")
+          .map((effect) => ({ bonus: effect.bonus, source: item.name, detail: "Equipped" })));
+      return [...activeModifiers, ...passiveModifiers, ...equipmentModifiers];
     }
 
     function renderStatValue(character, stat) {
@@ -699,6 +731,7 @@
         view: "overview",
         variantSelection: {},
         activeStatEffects: [],
+        equipmentAttackLog: [],
         characters: Object.fromEntries(CHARACTERS.map((character) => [
           character.id,
           {
@@ -706,7 +739,8 @@
             cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
             activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
             chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
-            abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0]))
+            abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0])),
+            equippedEquipment: []
           }
         ]))
       };
@@ -727,6 +761,12 @@
               );
             }
           }
+        }
+        if (Array.isArray(savedCharacter?.equippedEquipment)) {
+          const configuredItemIds = new Set((character.equipment || []).map((item) => item.id));
+          initial.characters[character.id].equippedEquipment = [...new Set(
+            savedCharacter.equippedEquipment.filter((itemId) => configuredItemIds.has(itemId))
+          )];
         }
         if (savedCharacter?.cooldowns) {
           for (const key of abilityConfigurationKeys(character)) {
@@ -800,6 +840,17 @@
           });
         }
       }
+      if (Array.isArray(parsed.equipmentAttackLog)) {
+        initial.equipmentAttackLog = parsed.equipmentAttackLog.flatMap((entry) => {
+          const character = characterById(entry?.characterId);
+          const item = character?.equipment?.find((equipment) =>
+            equipment.id === entry?.equipmentId && equipment.type === "weapon"
+          );
+          return item && Number.isInteger(entry.turn) && entry.turn > 0
+            ? [{ characterId: character.id, equipmentId: item.id, turn: entry.turn }]
+            : [];
+        }).slice(-10);
+      }
       initial.turn = Number.isInteger(parsed.turn) && parsed.turn > 0 ? parsed.turn : 1;
       initial.turnIndex = Number.isInteger(parsed.turnIndex) ? Math.max(0, parsed.turnIndex) % CHARACTERS.length : 0;
       initial.selectedId = CHARACTERS.some((character) => character.id === parsed.selectedId) ? parsed.selectedId : CHARACTERS[0].id;
@@ -870,6 +921,7 @@
         turn: state.turn,
         turnIndex: state.turnIndex,
         activeStatEffects: state.activeStatEffects,
+        equipmentAttackLog: state.equipmentAttackLog,
         characters: state.characters
       };
     }
@@ -1248,6 +1300,37 @@
       </section>`;
     }
 
+    function renderEquipment(character) {
+      const equipment = character.equipment || [];
+      const equippedIds = new Set(state.characters[character.id].equippedEquipment || []);
+      const rows = equipment.length ? equipment.map((item) => {
+        const equipped = equippedIds.has(item.id);
+        const effects = (item.statEffects || []).map((effect) => {
+          const label = effect.stat.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`);
+          const bonus = /^[+-]/.test(effect.bonus) ? effect.bonus : `+${effect.bonus}`;
+          return `<span class="cost-chip active-chip">${escapeHtml(label)} ${escapeHtml(bonus)}</span>`;
+        }).join("");
+        const attack = item.type === "weapon" && item.attack
+          ? `<div class="section-helper">Attack: ${escapeHtml(item.attack)}</div>`
+          : "";
+        return `<div class="ability-row equipment-row">
+          <div><div class="ability-name">${escapeHtml(item.name)}${item.type ? ` · ${escapeHtml(item.type)}` : ""}${equipped ? " · Equipped" : ""}</div>${item.description ? `<div class="ability-description">${escapeHtml(item.description)}</div>` : ""}${attack}<div class="ability-costs">${effects}</div></div>
+          <div class="equipment-actions"><button class="button ${equipped ? "" : "primary"}" data-equipment-toggle="${escapeHtml(item.id)}" aria-pressed="${equipped}">${equipped ? "Unequip" : "Equip"}</button>${item.type === "weapon" && equipped ? `<button class="button primary" data-equipment-attack="${escapeHtml(item.id)}">Attack</button>` : ""}</div>
+        </div>`;
+      }).join("") : '<div class="empty-note">No equipment configured for this character yet.</div>';
+      const recentAttacks = (state.equipmentAttackLog || []).slice(-5).reverse().map((entry) => {
+        const owner = characterById(entry.characterId);
+        const item = owner?.equipment?.find((configuredItem) => configuredItem.id === entry.equipmentId);
+        return owner && item
+          ? `<div class="equipment-attack-entry">Round ${entry.turn}: ${escapeHtml(owner.name)} attacks with ${escapeHtml(item.name)}${item.attack ? ` (${escapeHtml(item.attack)})` : ""}.</div>`
+          : "";
+      }).join("");
+      return `<section class="ability-section equipment-section">
+        <div class="ability-heading"><div><div class="section-title">Equipment</div><div class="section-helper" style="margin-top:5px">Equip items independently. Equipped stat bonuses are applied to this sheet; weapon attacks are recorded without damage tracking.</div></div><div class="section-helper">${equipment.length} configured</div></div>
+        <div class="ability-group"><div class="ability-list">${rows}</div>${recentAttacks ? `<div class="equipment-attack-log" aria-live="polite">${recentAttacks}</div>` : ""}</div>
+      </section>`;
+    }
+
     function renderSheet() {
       const character = getSelectedCharacter();
       const next = CHARACTERS[(state.turnIndex + 1) % CHARACTERS.length];
@@ -1290,7 +1373,8 @@
           </aside>
         </div>
         ${renderRacialGifts(character)}
-        ${renderAbilities(character)}`;
+        ${renderAbilities(character)}
+        ${renderEquipment(character)}`;
     }
 
     // Re-render all surfaces together so the roster, dashboard, sheet, and turn badge stay in sync.
@@ -1473,6 +1557,37 @@
       return true;
     }
 
+    function toggleEquipment(itemId) {
+      const character = getSelectedCharacter();
+      const item = (character.equipment || []).find((entry) => entry.id === itemId);
+      if (!item) return;
+      const progress = state.characters[character.id];
+      progress.equippedEquipment ??= [];
+      const isEquipped = progress.equippedEquipment.includes(item.id);
+      progress.equippedEquipment = isEquipped
+        ? progress.equippedEquipment.filter((equippedId) => equippedId !== item.id)
+        : [...progress.equippedEquipment, item.id];
+      saveCampaign();
+      render();
+      notify(`${item.name} ${isEquipped ? "unequipped" : "equipped"}.`);
+    }
+
+    function attackWithEquipment(itemId) {
+      const character = getSelectedCharacter();
+      const item = (character.equipment || []).find((entry) => entry.id === itemId && entry.type === "weapon");
+      if (!item || !state.characters[character.id].equippedEquipment?.includes(item.id)) return;
+      state.equipmentAttackLog ??= [];
+      state.equipmentAttackLog.push({
+        characterId: character.id,
+        equipmentId: item.id,
+        turn: state.turn
+      });
+      state.equipmentAttackLog = state.equipmentAttackLog.slice(-10);
+      saveCampaign();
+      render();
+      notify(`${character.name} attacks with ${item.name}${item.attack ? ` (${item.attack})` : ""}.`);
+    }
+
     function endTurn() {
       const character = getCurrentCharacter();
       const progress = state.characters[character.id];
@@ -1521,10 +1636,12 @@
           cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
           activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
           chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
-          abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0]))
+          abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0])),
+          equippedEquipment: [...(state.characters[character.id].equippedEquipment || [])]
         };
       }
       state.activeStatEffects = [];
+      state.equipmentAttackLog = [];
       state.variantSelection = {};
       state.turn = 1;
       state.turnIndex = 0;
@@ -1610,6 +1727,18 @@
       const abilityButton = target.closest("[data-use-ability]");
       if (abilityButton) {
         useAbility(abilityButton.dataset.useAbility);
+        return;
+      }
+
+      const equipmentToggle = target.closest("[data-equipment-toggle]");
+      if (equipmentToggle) {
+        toggleEquipment(equipmentToggle.dataset.equipmentToggle);
+        return;
+      }
+
+      const equipmentAttack = target.closest("[data-equipment-attack]");
+      if (equipmentAttack) {
+        attackWithEquipment(equipmentAttack.dataset.equipmentAttack);
         return;
       }
 
