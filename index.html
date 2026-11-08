@@ -207,6 +207,7 @@
     .cost-chip.stamina { border-color: #344337; color: #a7c3a0; }
     .cost-chip.cooldown { border-color: #41394b; color: #b6a4ce; }
     .cost-chip.power-chip { border-color: #56482e; color: #e0bd7d; }
+    .cost-chip.active-chip { border-color: #385044; color: #9dc5a6; }
     .ability-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
     .ability-tag { color: #87958a; font-size: 8px; }
     .tag-manager { margin-top: 16px; padding: 16px; }
@@ -304,13 +305,16 @@
     /*
      * CAMPAIGN SETUP
      * Every character follows Bob's format: identity, resources, stats, four essences,
-     * and their own ability catalogue. Edit these objects to customize your party.
+     * their own abilities, and optional racial gifts. Edit these objects to customize
+     * your party. Add variants as nested options on an ability to keep its category slot.
      * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
      *
      * Shared ability tags are ordinary tags such as "movement" and "blood".
-     * Use "passive" to remove costs, cooldowns, and the use button. Use "variant:<group>"
-     * (for example "variant:astral-bolt") on multiple same-category abilities to make
-     * them a single dropdown with individual costs, cooldowns, descriptions, and effects.
+     * Use "passive" to remove costs, cooldowns, and the use button. Ability variants
+     * are separate configurations nested on the ability, not separate category entries.
+     * Variant fields override the base ability fields; set duration to keep a cooldown
+     * paused while the effect is active. Racial gifts are free to use and may have
+     * cooldown and duration fields.
      */
     const CHARACTERS = [
       {
@@ -320,10 +324,12 @@
         stats: { manaRecovery: 12, staminaRecovery: 150, physicalAttack: "2D8-2", damageResistance: "4D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
         essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
         abilities: [
-          { id: "bob-prism-bolt", name: "Astral Bolt", variantName: "Focused", category: "Arcana", description: "Send a concentrated ray of astral light at one target.", mana: 24, stamina: 0, cooldown: 1, power: 8, tags: ["illusion", "sun", "variant:astral-bolt"] },
+          { id: "bob-prism-bolt", name: "Prism Bolt", category: "Arcana", description: "Send a concentrated ray of astral light at one target.", mana: 24, stamina: 0, cooldown: 1, power: 8, tags: ["illusion", "sun"], variants: [
+            { id: "wide-refraction", name: "Wide refraction", description: "Split the bolt through a mirrored angle to reach several targets.", mana: 34, stamina: 4, cooldown: 2, power: 11 }
+          ] },
           { id: "bob-mirror-ward", name: "Mirror Ward", category: "Arcana", description: "Raise a mirrored barrier that turns aside hostile magic.", mana: 30, stamina: 5, cooldown: 2, power: 10, tags: ["mirror", "warding"] },
           { id: "bob-solar-cage", name: "Solar Cage", category: "Arcana", description: "Trap a foe inside a lattice of blazing light.", mana: 42, stamina: 8, cooldown: 3, power: 15, tags: ["cage", "sun"] },
-          { id: "bob-starlit-chain", name: "Astral Bolt", variantName: "Binding", category: "Arcana", description: "Bind a target with a ray of astral energy.", mana: 34, stamina: 0, cooldown: 2, power: 11, tags: ["cage", "binding", "variant:astral-bolt"] },
+          { id: "bob-starlit-chain", name: "Starlit Chain", category: "Arcana", description: "Bind a target with a chain of astral energy.", mana: 34, stamina: 0, cooldown: 2, power: 11, tags: ["cage", "binding"], duration: 2 },
           { id: "bob-refraction-step", name: "Refraction Step", category: "Arcana", description: "Slip through a reflection and reappear nearby.", mana: 18, stamina: 12, cooldown: 1, power: 5, tags: ["movement", "illusion"] },
           { id: "bob-astral-palm", name: "Astral Palm", category: "Combat", description: "Strike with a focused burst of astral force.", mana: 6, stamina: 20, cooldown: 1, power: 8, tags: ["astral", "melee"] },
           { id: "bob-comet-breaker", name: "Comet Breaker", category: "Combat", description: "Drive a heavy blow into a foe like a falling star.", mana: 10, stamina: 30, cooldown: 2, power: 14, tags: ["impact", "sun"] },
@@ -340,6 +346,9 @@
           { id: "bob-reflective-aegis", name: "Reflective Aegis", category: "Support", description: "Cover an ally in a protective mirrored sheen.", mana: 26, stamina: 8, cooldown: 3, power: 12, tags: ["mirror", "warding"] },
           { id: "bob-lantern-of-dawn", name: "Lantern of Dawn", category: "Support", description: "Fill the area with reassuring, radiant light.", mana: 20, stamina: 4, cooldown: 2, power: 8, tags: ["sun", "support"] },
           { id: "bob-open-the-cage", name: "Open the Cage", category: "Support", description: "Release an ally from a snare or restricting effect.", mana: 16, stamina: 10, cooldown: 2, power: 7, tags: ["cage", "escape"] }
+        ],
+        racialGifts: [
+          { id: "bob-mirror-born", name: "Mirror-born", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, power: 6, duration: 2, tags: ["illusion", "movement"] }
         ]
       },
       {
@@ -349,9 +358,11 @@
         stats: { manaRecovery: 7, staminaRecovery: 16, physicalAttack: "4D8+2", damageResistance: "5D8+1", magic: "2D8", magicResistance: "4D8", speed: 8, reflexes: 9 },
         essences: ["Iron", "Root", "Thunder", "Oath"],
         abilities: [
-          { id: "garran-rune-hammer", name: "Runic Burst", variantName: "Ground shock", category: "Arcana", description: "Stamp a rune into the ground and release a shockwave.", mana: 12, stamina: 8, cooldown: 1, power: 8, tags: ["rune", "impact", "variant:runic-burst"] },
+          { id: "garran-rune-hammer", name: "Rune Hammer", category: "Arcana", description: "Stamp a rune into the ground and release a shockwave.", mana: 12, stamina: 8, cooldown: 1, power: 8, tags: ["rune", "impact"], variants: [
+            { id: "thunder-brand", name: "Thunder brand", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, power: 11, tags: ["thunder", "rune"] }
+          ] },
           { id: "garran-stone-shell", name: "Stone Shell", category: "Arcana", description: "Layer your armor in a temporary coat of stone.", mana: 14, stamina: 4, cooldown: 2, power: 10, tags: ["root", "defense"] },
-          { id: "garran-thunder-mark", name: "Runic Burst", variantName: "Thunder brand", category: "Arcana", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, power: 11, tags: ["thunder", "rune", "variant:runic-burst"] },
+          { id: "garran-thunder-mark", name: "Thunder Mark", category: "Arcana", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, power: 11, tags: ["thunder", "rune"] },
           { id: "garran-iron-anchor", name: "Iron Anchor", category: "Arcana", description: "Root yourself in place against incoming force.", mana: 10, stamina: 10, cooldown: 2, power: 7, tags: ["iron", "root"] },
           { id: "garran-oathfire", name: "Oathfire", category: "Arcana", description: "Kindle a steady flame that strengthens an ally's resolve.", mana: 16, stamina: 6, cooldown: 3, power: 9, tags: ["oath", "support"] },
           { id: "garran-mountain-cleave", name: "Mountain Cleave", category: "Combat", description: "Bring a two-handed strike down with crushing weight.", mana: 0, stamina: 32, cooldown: 2, power: 15, tags: ["impact", "melee"] },
@@ -369,6 +380,9 @@
           { id: "garran-iron-vow", name: "Iron Vow", category: "Support", description: "Take an ally's burden and fortify your own resolve.", mana: 10, stamina: 15, cooldown: 3, power: 10, tags: ["iron", "oath"] },
           { id: "garran-earthward", name: "Earthward", category: "Support", description: "Raise a low earthen ridge to shelter nearby allies.", mana: 20, stamina: 8, cooldown: 3, power: 12, tags: ["root", "defense"] },
           { id: "garran-thunder-call", name: "Thunder Call", category: "Support", description: "Sound a resonant call that steadies the whole party.", mana: 14, stamina: 10, cooldown: 2, power: 8, tags: ["thunder", "support"] }
+        ],
+        racialGifts: [
+          { id: "garran-stone-blood", name: "Stoneblood", description: "Harden your stonekin hide against the next blow.", cooldown: 3, power: 7, duration: 2, tags: ["root", "defense"] }
         ]
       },
       {
@@ -378,11 +392,13 @@
         stats: { manaRecovery: 11, staminaRecovery: 20, physicalAttack: "3D8+1", damageResistance: "3D8", magic: "5D8+1", magicResistance: "3D8+2", speed: 17, reflexes: 19 },
         essences: ["Mist", "Thorn", "Echo", "Hunger"],
         abilities: [
-          { id: "sera-phantom-thread", name: "Phantom Snare", variantName: "Thread", category: "Arcana", description: "Weave a nearly invisible strand of deceptive magic.", mana: 14, stamina: 0, cooldown: 1, power: 6, tags: ["illusion", "binding", "variant:phantom-snare"] },
+          { id: "sera-phantom-thread", name: "Phantom Thread", category: "Arcana", description: "Weave a nearly invisible strand of deceptive magic.", mana: 14, stamina: 0, cooldown: 1, power: 6, tags: ["illusion", "binding"], variants: [
+            { id: "hollow-trap", name: "Hollow trap", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, power: 11, tags: ["binding", "mist"] }
+          ] },
           { id: "sera-mist-double", name: "Mist Double", category: "Arcana", description: "Create a moving copy of yourself in a veil of mist.", mana: 20, stamina: 5, cooldown: 2, power: 8, tags: ["illusion", "mist"] },
           { id: "sera-thorn-hex", name: "Thorn Hex", category: "Arcana", description: "Curse a target with spectral thorns that punish movement.", mana: 24, stamina: 4, cooldown: 2, power: 10, tags: ["thorn", "curse"] },
           { id: "sera-echoing-veil", name: "Echoing Veil", category: "Arcana", description: "Bend sound and sight around a chosen companion.", mana: 18, stamina: 6, cooldown: 2, power: 7, tags: ["echo", "illusion"] },
-          { id: "sera-hollow-snare", name: "Phantom Snare", variantName: "Hollow trap", category: "Arcana", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, power: 11, tags: ["binding", "mist", "variant:phantom-snare"] },
+          { id: "sera-hollow-snare", name: "Hollow Snare", category: "Arcana", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, power: 11, tags: ["binding", "mist"] },
           { id: "sera-nightfang", name: "Nightfang", category: "Combat", description: "Strike from concealment and leave a lingering wound.", mana: 4, stamina: 22, cooldown: 1, power: 11, tags: ["blood", "melee"] },
           { id: "sera-thorn-dance", name: "Thorn Dance", category: "Combat", description: "Whirl between foes with a pair of curved blades.", mana: 8, stamina: 30, cooldown: 2, power: 13, tags: ["thorn", "movement"] },
           { id: "sera-echo-strike", name: "Echo Strike", category: "Combat", description: "A false swing distracts before the real blow lands.", mana: 12, stamina: 18, cooldown: 2, power: 10, tags: ["echo", "illusion"] },
@@ -398,6 +414,9 @@
           { id: "sera-hidden-path", name: "Hidden Path", category: "Support", description: "Conceal a safe route for your allies to reposition.", mana: 16, stamina: 10, cooldown: 2, power: 8, tags: ["movement", "illusion"] },
           { id: "sera-blood-offering", name: "Blood Offering", category: "Support", description: "Give up a little vitality to restore an ally's strength.", mana: 14, stamina: 8, cooldown: 3, power: 10, tags: ["blood", "healing"] },
           { id: "sera-quiet-company", name: "Quiet Company", category: "Support", description: "Soothe an ally with a familiar voice carried on the wind.", mana: 20, stamina: 0, cooldown: 2, power: 8, tags: ["echo", "support"] }
+        ],
+        racialGifts: [
+          { id: "sera-veilborn-step", name: "Veilborn Step", description: "Slip into the veil and emerge from a nearby shadow.", cooldown: 3, power: 6, duration: 1, tags: ["movement", "illusion"] }
         ]
       },
       {
@@ -407,9 +426,11 @@
         stats: { manaRecovery: 16, staminaRecovery: 14, physicalAttack: "3D8+2", damageResistance: "4D8", magic: "5D8+2", magicResistance: "5D8+1", speed: 10, reflexes: 12 },
         essences: ["Halo", "Ash", "Bell", "Mercy"],
         abilities: [
-          { id: "orin-dawn-lance", name: "Dawn Call", variantName: "Lance", category: "Arcana", description: "Form a bright spear of solar magic and cast it forward.", mana: 22, stamina: 0, cooldown: 1, power: 9, tags: ["sun", "light", "variant:dawn-call"] },
+          { id: "orin-dawn-lance", name: "Dawn Lance", category: "Arcana", description: "Form a bright spear of solar magic and cast it forward.", mana: 22, stamina: 0, cooldown: 1, power: 9, tags: ["sun", "light"], variants: [
+            { id: "noon-chime", name: "Noon chime", description: "Ring out a burst of light that disrupts nearby enemies.", mana: 32, stamina: 6, cooldown: 3, power: 13, tags: ["bell", "area"] }
+          ] },
           { id: "orin-ashen-seal", name: "Ashen Seal", category: "Arcana", description: "Mark a foe with a seal that dampens hostile magic.", mana: 20, stamina: 4, cooldown: 2, power: 8, tags: ["ash", "warding"] },
-          { id: "orin-bell-of-noon", name: "Dawn Call", variantName: "Noon chime", category: "Arcana", description: "Ring out a burst of light that disrupts nearby enemies.", mana: 32, stamina: 6, cooldown: 3, power: 13, tags: ["bell", "area", "variant:dawn-call"] },
+          { id: "orin-bell-of-noon", name: "Bell of Noon", category: "Arcana", description: "Ring out a burst of light that disrupts nearby enemies.", mana: 32, stamina: 6, cooldown: 3, power: 13, tags: ["bell", "area"] },
           { id: "orin-mercy-flame", name: "Mercy Flame", category: "Arcana", description: "Call a gentle solar flame to soothe an injured ally.", mana: 28, stamina: 0, cooldown: 2, power: 11, tags: ["sun", "healing"] },
           { id: "orin-radiant-step", name: "Radiant Step", category: "Arcana", description: "Cross a short distance in a flash of golden light.", mana: 16, stamina: 10, cooldown: 1, power: 5, tags: ["movement", "light"] },
           { id: "orin-sunward-strike", name: "Sunward Strike", category: "Combat", description: "Strike with a weapon warmed by the first light of dawn.", mana: 8, stamina: 20, cooldown: 1, power: 9, tags: ["sun", "melee"] },
@@ -427,26 +448,51 @@
           { id: "orin-mercy-shield", name: "Mercy Shield", category: "Support", description: "Shield an ally from harm with a compassionate ward.", mana: 24, stamina: 6, cooldown: 2, power: 11, tags: ["mercy", "defense"] },
           { id: "orin-ash-cleansing", name: "Ash Cleansing", category: "Support", description: "Use sacred ash to clear a lingering affliction.", mana: 22, stamina: 4, cooldown: 2, power: 9, tags: ["ash", "cleansing"] },
           { id: "orin-share-the-light", name: "Share the Light", category: "Support", description: "Lend a companion a spark of your solar reserve.", mana: 16, stamina: 6, cooldown: 2, power: 8, tags: ["light", "support"] }
+        ],
+        racialGifts: [
+          { id: "orin-dawnkin-aura", name: "Dawnkin Aura", description: "Surround yourself and nearby allies with a renewing dawnlight.", cooldown: 4, power: 8, duration: 2, tags: ["light", "healing"] }
         ]
       }
     ];
 
     const CATEGORIES = ["Arcana", "Combat", "Technique", "Support"];
-    // Derive the tag list from the character ability data, so new tags need no second registration.
+    // Include variant-specific tags so they can also be tuned from the shared tag manager.
     const ABILITY_TAGS = [...new Set(
-      CHARACTERS.flatMap((character) => character.abilities.flatMap((ability) => ability.tags))
+      CHARACTERS.flatMap((character) => [...character.abilities, ...(character.racialGifts || [])]
+        .flatMap((ability) => [...(ability.tags || []), ...(ability.variants || []).flatMap((variant) => variant.tags || [])]))
     )].filter((tag) => tag !== "passive" && !tag.startsWith("variant:")).sort();
     // These are additive bonuses to ability power. Raise one tag once to buff every
     // matching ability across all four character-specific lists.
     const TAG_BONUSES = Object.fromEntries(ABILITY_TAGS.map((tag) => [tag, 0]));
     const STORAGE_KEY = "pallimustas-campaign-v1";
+
+    function allCharacterAbilities(character) {
+      return [...character.abilities, ...(character.racialGifts || [])];
+    }
+
+    // Variants retain independent cooldown/effect clocks while remaining one listed ability.
+    function abilityConfigurationKeys(character) {
+      return allCharacterAbilities(character).flatMap((ability) => [
+        ability.id,
+        ...(ability.variants || []).map((variant) => `${ability.id}::${variant.id}`)
+      ]);
+    }
+
+    function abilityStateKey(ability, variant) {
+      return variant ? `${ability.id}::${variant.id}` : ability.id;
+    }
+
+    // Firebase web app config is public. Realtime Database also needs its databaseURL.
+    // Copy that URL from Firebase Console > Realtime Database; it is not the Hosting URL.
     const FIREBASE_CONFIG = {
-      // Fill these values from Firebase Console > Project settings > Your apps.
-      apiKey: "YOUR_FIREBASE_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_DATABASE_NAME.REGION.firebasedatabase.app",
-      projectId: "YOUR_PROJECT_ID",
-      appId: "YOUR_FIREBASE_APP_ID"
+      apiKey: "AIzaSyDzpQXX4IoMuPD_Ka04gslAdYJ23wpj22A",
+      authDomain: "pallimustas.firebaseapp.com",
+      databaseURL: "https://pallimustas-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "pallimustas",
+      storageBucket: "pallimustas.firebasestorage.app",
+      messagingSenderId: "954075035758",
+      appId: "1:954075035758:web:15926921cb89ba85ad8e7f",
+      measurementId: "G-4SD6H7LF9F"
     };
     // Keep this path identical on every device. Anyone who can access a public app using
     // anonymous sign-in can access its campaign, so don't store private player information.
@@ -465,7 +511,8 @@
           character.id,
           {
             resources: { ...character.resources },
-            cooldowns: Object.fromEntries(character.abilities.map((ability) => [ability.id, 0]))
+            cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
+            activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0]))
           }
         ]))
       };
@@ -488,11 +535,18 @@
           }
         }
         if (savedCharacter?.cooldowns) {
-          for (const ability of character.abilities) {
-            if (ability.tags.includes("passive")) continue;
-            const cooldown = savedCharacter.cooldowns[ability.id];
+          for (const key of abilityConfigurationKeys(character)) {
+            const cooldown = savedCharacter.cooldowns[key];
             if (Number.isFinite(cooldown)) {
-              initial.characters[character.id].cooldowns[ability.id] = Math.max(0, cooldown);
+              initial.characters[character.id].cooldowns[key] = Math.max(0, cooldown);
+            }
+          }
+        }
+        if (savedCharacter?.activeTurns) {
+          for (const key of abilityConfigurationKeys(character)) {
+            const activeTurns = savedCharacter.activeTurns[key];
+            if (Number.isFinite(activeTurns)) {
+              initial.characters[character.id].activeTurns[key] = Math.max(0, activeTurns);
             }
           }
         }
@@ -510,12 +564,11 @@
       initial.view = parsed.view === "sheet" ? "sheet" : "overview";
       if (parsed.variantSelection && typeof parsed.variantSelection === "object") {
         for (const character of CHARACTERS) {
-          for (const ability of character.abilities) {
-            const group = ability.tags.find((tag) => tag.startsWith("variant:"))?.slice("variant:".length);
-            const selectedAbilityId = parsed.variantSelection[character.id]?.[group];
-            if (group && character.abilities.some((entry) => entry.id === selectedAbilityId && entry.tags.includes(`variant:${group}`))) {
+          for (const ability of allCharacterAbilities(character)) {
+            const selectedVariantId = parsed.variantSelection[character.id]?.[ability.id];
+            if ((ability.variants || []).some((variant) => variant.id === selectedVariantId)) {
               initial.variantSelection[character.id] ??= {};
-              initial.variantSelection[character.id][group] = selectedAbilityId;
+              initial.variantSelection[character.id][ability.id] = selectedVariantId;
             }
           }
         }
@@ -550,6 +603,24 @@
       }
     }
 
+    // Translate common Firebase setup errors into actions visible to the campaign owner.
+    function firebaseErrorMessage(error) {
+      switch (error?.code) {
+        case "auth/configuration-not-found":
+          return "Enable Anonymous sign-in in Firebase Authentication.";
+        case "auth/unauthorized-domain":
+          return "Add this site to Firebase Authentication's authorized domains.";
+        case "PERMISSION_DENIED":
+        case "database/permission-denied":
+          return "Firebase Database rules denied access. Check authenticated read/write rules.";
+        default:
+          if (error instanceof TypeError && /fetch|module/i.test(error.message)) {
+            return "Firebase SDK could not load. Open the app on GitHub Pages (HTTPS) or localhost, not as a file.";
+          }
+          return "Firebase sync could not connect. Check the browser console for details.";
+      }
+    }
+
     // View and selected character are device-local; game progress and resources are shared.
     function sharedCampaignSnapshot() {
       return {
@@ -569,7 +640,7 @@
         .catch((error) => {
           console.error("Could not save campaign to Firebase:", error);
           setSyncStatus("Sync error", true);
-          notify("Campaign sync failed. Your local changes are still saved.");
+          notify(`${firebaseErrorMessage(error)} Local changes are still saved.`);
         });
     }
 
@@ -581,20 +652,32 @@
      * Firebase web config is public; never put an Admin SDK key or service secret here.
      */
     async function startFirebaseSync() {
-      const configured = Object.values(FIREBASE_CONFIG).every((value) =>
-        value && !value.startsWith("YOUR_") && !value.includes("YOUR_DATABASE_NAME")
+      // Browsers restrict Firebase's remote ES modules and auth origins on file:// URLs.
+      if (location.protocol === "file:") {
+        setSyncStatus("Open via HTTPS to sync");
+        return;
+      }
+
+      const requiredConfig = ["apiKey", "authDomain", "databaseURL", "projectId", "appId"];
+      const missingConfig = requiredConfig.filter((key) =>
+        !FIREBASE_CONFIG[key] || FIREBASE_CONFIG[key].startsWith("YOUR_")
       );
-      if (!configured) {
-        setSyncStatus("Local only");
+      if (missingConfig.length) {
+        setSyncStatus(missingConfig.includes("databaseURL") ? "Add database URL" : "Firebase config incomplete");
+        return;
+      }
+      if (!/^https:\/\/[^/]+/.test(FIREBASE_CONFIG.databaseURL)) {
+        setSyncStatus("Invalid database URL", true);
+        console.error("Firebase Realtime Database URL must be an https URL.");
         return;
       }
 
       setSyncStatus("Connecting");
       try {
         const [appSdk, authSdk, databaseSdk] = await Promise.all([
-          import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
-          import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
-          import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js")
+          import("https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js"),
+          import("https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js"),
+          import("https://www.gstatic.com/firebasejs/13.2.0/firebase-database.js")
         ]);
         const app = appSdk.initializeApp(FIREBASE_CONFIG);
         const auth = authSdk.getAuth(app);
@@ -625,14 +708,14 @@
         }, (error) => {
           console.error("Firebase campaign listener failed:", error);
           setSyncStatus("Sync error", true);
-          notify("Could not receive campaign updates from Firebase.");
+          notify(firebaseErrorMessage(error));
         });
       } catch (error) {
         console.error("Firebase campaign sync could not start:", error);
         remoteCampaignRef = null;
         remoteSet = null;
         setSyncStatus("Sync error", true);
-        notify("Firebase sync could not connect. Local saving is still available.");
+        notify(`${firebaseErrorMessage(error)} Local saving is still available.`);
       }
     }
 
@@ -657,9 +740,14 @@
       return ability.power + ability.tags.reduce((sum, tag) => sum + (state.tagBonuses[tag] || 0), 0);
     }
 
+    function abilityHasTag(ability, tag) {
+      return (ability.tags || []).includes(tag) ||
+        (ability.variants || []).some((variant) => (variant.tags || []).includes(tag));
+    }
+
     function getSharedTags() {
       return ABILITY_TAGS.filter((tag) =>
-        CHARACTERS.filter((character) => character.abilities.some((ability) => ability.tags.includes(tag))).length > 1
+        CHARACTERS.filter((character) => allCharacterAbilities(character).some((ability) => abilityHasTag(ability, tag))).length > 1
       );
     }
 
@@ -705,7 +793,7 @@
         return Object.keys(character.resources).map((resource) => current[resource] / character.resources[resource]);
       });
       const average = Math.round((allResources.reduce((sum, value) => sum + value, 0) / allResources.length) * 100);
-      const totalAbilities = CHARACTERS.reduce((total, character) => total + character.abilities.length, 0);
+      const totalAbilities = CHARACTERS.reduce((total, character) => total + allCharacterAbilities(character).length, 0);
       const current = getCurrentCharacter();
       return `<div class="summary-grid">
         <article class="summary-card"><div class="summary-top"><span class="summary-label">Party members</span><span class="summary-icon">♙</span></div><div class="summary-value">${CHARACTERS.length}</div><div class="summary-foot">Adventurers in the party</div></article>
@@ -767,7 +855,9 @@
           <div class="section-helper">Bonuses apply to displayed ability power</div>
         </div>
         <div class="tag-controls">${tags.map((tag) => {
-          const users = CHARACTERS.filter((character) => character.abilities.some((ability) => ability.tags.includes(tag))).length;
+          const users = CHARACTERS.filter((character) =>
+            allCharacterAbilities(character).some((ability) => abilityHasTag(ability, tag))
+          ).length;
           const bonus = state.tagBonuses[tag] || 0;
           return `<div class="tag-control">
             <span class="tag-control-name">#${escapeHtml(tag)}</span>
@@ -798,70 +888,63 @@
       return `<div class="stat-tile"><div class="stat-value">${escapeHtml(value)}</div><div class="stat-label">${escapeHtml(label)}</div></div>`;
     }
 
-    function variantGroupFor(ability) {
-      return ability.tags.find((tag) => tag.startsWith("variant:"))?.slice("variant:".length) || null;
+    function selectedAbilityFor(character, ability) {
+      const selectedId = state.variantSelection[character.id]?.[ability.id];
+      const variant = (ability.variants || []).find((entry) => entry.id === selectedId);
+      return variant ? { ...ability, ...variant, tags: [...new Set([...(ability.tags || []), ...(variant.tags || [])])] } : ability;
     }
 
-    function abilitiesForCategory(character, category) {
-      const groups = [];
-      const grouped = new Map();
-      for (const ability of character.abilities.filter((entry) => entry.category === category)) {
-        const group = variantGroupFor(ability);
-        if (!group) {
-          groups.push({ group: null, abilities: [ability] });
-          continue;
-        }
-        if (!grouped.has(group)) {
-          const entry = { group, abilities: [] };
-          grouped.set(group, entry);
-          groups.push(entry);
-        }
-        grouped.get(group).abilities.push(ability);
-      }
-      return groups;
-    }
-
-    function selectedAbilityFor(character, group, variants) {
-      const selectedId = state.variantSelection[character.id]?.[group];
-      return variants.find((ability) => ability.id === selectedId) || variants[0];
-    }
-
-    function renderAbilityRow(character, variants) {
+    function renderAbilityRow(character, ability, isRacialGift = false) {
       const progress = state.characters[character.id];
-      const group = variantGroupFor(variants[0]);
-      const ability = group ? selectedAbilityFor(character, group, variants) : variants[0];
-      const passive = ability.tags.includes("passive");
-      const cooldown = progress.cooldowns[ability.id] || 0;
-      const enoughMana = progress.resources.mana >= ability.mana;
-      const enoughStamina = progress.resources.stamina >= ability.stamina;
-      const disabled = passive || cooldown > 0 || !enoughMana || !enoughStamina;
-      const reason = passive ? "" : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
+      const selectedAbility = selectedAbilityFor(character, ability);
+      const variantId = selectedAbility.id === ability.id ? null : selectedAbility.id;
+      const stateKey = variantId ? `${ability.id}::${variantId}` : ability.id;
+      const passive = !isRacialGift && selectedAbility.tags.includes("passive");
+      const manaCost = isRacialGift ? 0 : selectedAbility.mana;
+      const staminaCost = isRacialGift ? 0 : selectedAbility.stamina;
+      const cooldown = progress.cooldowns[stateKey] || 0;
+      const activeTurns = progress.activeTurns[stateKey] || 0;
+      const enoughMana = progress.resources.mana >= manaCost;
+      const enoughStamina = progress.resources.stamina >= staminaCost;
+      const disabled = passive || cooldown > 0 || activeTurns > 0 || !enoughMana || !enoughStamina;
+      const reason = passive ? "" : activeTurns > 0 ? `Active for ${activeTurns} more turn${activeTurns === 1 ? "" : "s"}` : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
       const costs = passive ? '<span class="cost-chip power-chip">Passive</span>' : [
-        ability.mana > 0 ? `<span class="cost-chip">◈ ${ability.mana} mana</span>` : "",
-        ability.stamina > 0 ? `<span class="cost-chip stamina">⌁ ${ability.stamina} stamina</span>` : "",
-        ability.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${ability.cooldown} turn${ability.cooldown === 1 ? "" : "s"} CD</span>` : "",
-        `<span class="cost-chip power-chip">✦ Power ${getAbilityPower(ability)}</span>`
+        manaCost > 0 ? `<span class="cost-chip">◈ ${manaCost} mana</span>` : "",
+        staminaCost > 0 ? `<span class="cost-chip stamina">⌁ ${staminaCost} stamina</span>` : "",
+        selectedAbility.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${selectedAbility.cooldown} turn${selectedAbility.cooldown === 1 ? "" : "s"} CD</span>` : "",
+        selectedAbility.duration > 0 ? `<span class="cost-chip active-chip">◉ ${selectedAbility.duration} turn${selectedAbility.duration === 1 ? "" : "s"} active</span>` : "",
+        `<span class="cost-chip power-chip">✦ Power ${getAbilityPower(selectedAbility)}</span>`
       ].filter(Boolean).join("");
-      const tags = ability.tags.filter((tag) => tag !== "passive" && !tag.startsWith("variant:"))
+      const tags = (selectedAbility.tags || []).filter((tag) => tag !== "passive" && !tag.startsWith("variant:"))
         .map((tag) => `<span class="ability-tag">#${escapeHtml(tag)}${state.tagBonuses[tag] ? ` ${state.tagBonuses[tag] > 0 ? "+" : ""}${state.tagBonuses[tag]}` : ""}</span>`).join("");
-      const variantControl = group ? `<label><span class="section-helper">Variant </span><select class="variant-select" data-variant-character="${escapeHtml(character.id)}" data-variant-group="${escapeHtml(group)}" aria-label="${escapeHtml(ability.name)} version">${variants.map((variant) => `<option value="${escapeHtml(variant.id)}" ${variant.id === ability.id ? "selected" : ""}>${escapeHtml(variant.variantName || variant.name)}</option>`).join("")}</select></label>` : "";
+      const variants = ability.variants || [];
+      const chosenVariantId = state.variantSelection[character.id]?.[ability.id] || "";
+      const variantControl = variants.length ? `<label><span class="section-helper">Variant </span><select class="variant-select" data-variant-character="${escapeHtml(character.id)}" data-variant-ability="${escapeHtml(ability.id)}" aria-label="${escapeHtml(ability.name)} variant"><option value="">Standard</option>${variants.map((variant) => `<option value="${escapeHtml(variant.id)}" ${variant.id === chosenVariantId ? "selected" : ""}>${escapeHtml(variant.name)}</option>`).join("")}</select></label>` : "";
       return `<div class="ability-row">
-        <div>${variantControl}<div class="ability-name">${escapeHtml(ability.name)}</div><div class="ability-description">${escapeHtml(ability.description)}</div><div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
-        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${cooldown > 0 ? "Cooling down" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
+        <div>${variantControl}<div class="ability-name">${escapeHtml(ability.name)}</div><div class="ability-description">${escapeHtml(selectedAbility.description)}</div><div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
+        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${activeTurns > 0 ? "Active" : cooldown > 0 ? "Cooling down" : isRacialGift ? "Use gift" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
       </div>`;
     }
 
     function renderAbilities(character) {
       return `<section class="ability-section">
-        <div class="ability-heading"><div><div class="section-title">Abilities</div><div class="section-helper" style="margin-top:5px">Use an ability to spend resources and start its cooldown.</div></div><div class="section-helper">${character.abilities.length} personal abilities · 4 disciplines</div></div>
+        <div class="ability-heading"><div><div class="section-title">Abilities</div><div class="section-helper" style="margin-top:5px">Variants keep their own costs and cooldowns. Active effects pause cooldown until they expire.</div></div><div class="section-helper">${character.abilities.length} personal abilities · 4 disciplines</div></div>
         <div class="ability-groups">${CATEGORIES.map((category) => {
-          const groups = abilitiesForCategory(character, category);
-          const count = groups.reduce((total, entry) => total + entry.abilities.length, 0);
+          const abilities = character.abilities.filter((ability) => ability.category === category);
           return `<div class="ability-group">
-            <div class="ability-group-head"><span class="category-title">${category}</span><span class="category-count">${count} abilities</span></div>
-            <div class="ability-list">${groups.map((entry) => renderAbilityRow(character, entry.abilities)).join("")}</div>
+            <div class="ability-group-head"><span class="category-title">${category}</span><span class="category-count">${abilities.length} abilities</span></div>
+            <div class="ability-list">${abilities.map((ability) => renderAbilityRow(character, ability)).join("")}</div>
           </div>`;
         }).join("")}</div>
+      </section>`;
+    }
+
+    function renderRacialGifts(character) {
+      const gifts = character.racialGifts || [];
+      if (!gifts.length) return "";
+      return `<section class="ability-section">
+        <div class="ability-heading"><div><div class="section-title">Racial gifts</div><div class="section-helper" style="margin-top:5px">Innate abilities cost no mana or stamina.</div></div><div class="section-helper">${gifts.length} configured</div></div>
+        <div class="ability-group"><div class="ability-list">${gifts.map((gift) => renderAbilityRow(character, gift, true)).join("")}</div></div>
       </section>`;
     }
 
@@ -898,6 +981,7 @@
               </div>
             </section>
             ${renderAbilities(character)}
+            ${renderRacialGifts(character)}
           </div>
           <aside class="sheet-aside">
             <section class="panel aside-panel">
@@ -905,7 +989,7 @@
               <div class="next-turn">${avatarStyle(getCurrentCharacter())}<div><div class="next-name">${escapeHtml(getCurrentCharacter().name)}</div><div class="next-label">Current · Round ${state.turn}</div></div></div>
               <div class="next-turn" style="margin-top:12px">${avatarStyle(next)}<div><div class="next-name">${escapeHtml(next.name)}</div><div class="next-label">Up next</div></div></div>
               <div class="turn-actions"><button class="button primary" data-action="end-turn">End ${escapeHtml(character.name.split(" ")[0])}'s turn →</button><button class="button subtle" data-action="confirm-reset">↻ Reset session</button></div>
-              <div class="regen-note">Ending the current turn restores mana and stamina, then reduces all of that character’s cooldowns.</div>
+              <div class="regen-note">Ending the current turn restores mana and stamina, then reduces that character’s cooldowns. Active durations count down on the owner’s turns; cooldowns pause until an effect expires.</div>
             </section>
             <section class="panel aside-panel">
               <div class="aside-heading">Session</div>
@@ -953,14 +1037,13 @@
       notify(`#${tag} power bonus is now ${state.tagBonuses[tag] > 0 ? "+" : ""}${state.tagBonuses[tag]}.`);
     }
 
-    function selectAbilityVariant(characterId, group, abilityId) {
+    function selectAbilityVariant(characterId, abilityId, variantId) {
       const character = characterById(characterId);
-      const isVariant = character.abilities.some((ability) =>
-        ability.id === abilityId && ability.tags.includes(`variant:${group}`)
-      );
-      if (!isVariant) return;
+      const ability = allCharacterAbilities(character).find((entry) => entry.id === abilityId);
+      if (!ability || (variantId && !(ability.variants || []).some((variant) => variant.id === variantId))) return;
       state.variantSelection[characterId] ??= {};
-      state.variantSelection[characterId][group] = abilityId;
+      if (variantId) state.variantSelection[characterId][abilityId] = variantId;
+      else delete state.variantSelection[characterId][abilityId];
       saveCampaign();
       render();
     }
@@ -968,17 +1051,24 @@
     function useAbility(abilityId) {
       const character = getSelectedCharacter();
       const progress = state.characters[character.id];
-      const ability = character.abilities.find((entry) => entry.id === abilityId);
-      if (!ability || progress.cooldowns[abilityId] > 0) return;
+      const configuredAbility = allCharacterAbilities(character).find((entry) => entry.id === abilityId);
+      if (!configuredAbility) return;
+      const ability = selectedAbilityFor(character, configuredAbility);
       if (ability.tags.includes("passive")) return;
-      if (progress.resources.mana < ability.mana || progress.resources.stamina < ability.stamina) return;
+      const isRacialGift = (character.racialGifts || []).some((gift) => gift.id === abilityId);
+      const stateKey = abilityStateKey(configuredAbility, ability.id === configuredAbility.id ? null : ability);
+      if ((progress.cooldowns[stateKey] || 0) > 0 || (progress.activeTurns[stateKey] || 0) > 0) return;
+      const manaCost = isRacialGift ? 0 : ability.mana;
+      const staminaCost = isRacialGift ? 0 : ability.stamina;
+      if (progress.resources.mana < manaCost || progress.resources.stamina < staminaCost) return;
 
-      progress.resources.mana -= ability.mana;
-      progress.resources.stamina -= ability.stamina;
-      progress.cooldowns[abilityId] = ability.cooldown;
+      progress.resources.mana -= manaCost;
+      progress.resources.stamina -= staminaCost;
+      progress.cooldowns[stateKey] = ability.cooldown;
+      progress.activeTurns[stateKey] = Math.max(0, ability.duration || 0);
       saveCampaign();
       render();
-      notify(`${ability.name} used — ${character.name}'s resources updated.`);
+      notify(`${ability.name} used${ability.duration ? ` for ${ability.duration} turns` : ""} — ${character.name}'s resources updated.`);
     }
 
     function endTurn() {
@@ -987,9 +1077,17 @@
       // Recovery is capped at each character's configured maximum; no resource can overflow.
       progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + character.stats.manaRecovery);
       progress.resources.stamina = Math.min(character.resources.stamina, progress.resources.stamina + character.stats.staminaRecovery);
-      for (const ability of character.abilities) {
-        if (ability.tags.includes("passive")) continue;
-        progress.cooldowns[ability.id] = Math.max(0, progress.cooldowns[ability.id] - 1);
+      for (const ability of allCharacterAbilities(character)) {
+        const configurations = [ability, ...(ability.variants || [])];
+        for (const configuration of configurations) {
+          if (configuration.tags?.includes("passive")) continue;
+          const stateKey = abilityStateKey(ability, configuration === ability ? null : configuration);
+          if (progress.activeTurns[stateKey] > 0) {
+            progress.activeTurns[stateKey] -= 1;
+            continue;
+          }
+          progress.cooldowns[stateKey] = Math.max(0, (progress.cooldowns[stateKey] || 0) - 1);
+        }
       }
       state.turnIndex = (state.turnIndex + 1) % CHARACTERS.length;
       // Round counter advances only when turn order wraps back to the first character.
@@ -1004,7 +1102,8 @@
       for (const character of CHARACTERS) {
         state.characters[character.id] = {
           resources: { ...character.resources },
-          cooldowns: Object.fromEntries(character.abilities.map((ability) => [ability.id, 0]))
+          cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
+          activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0]))
         };
       }
       state.tagBonuses = { ...TAG_BONUSES };
@@ -1091,7 +1190,7 @@
     document.addEventListener("change", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLSelectElement) || !target.matches("[data-variant-character]")) return;
-      selectAbilityVariant(target.dataset.variantCharacter, target.dataset.variantGroup, target.value);
+      selectAbilityVariant(target.dataset.variantCharacter, target.dataset.variantAbility, target.value);
     });
 
     // Allow keyboard activation on overview character cards, in addition to mouse/touch.
