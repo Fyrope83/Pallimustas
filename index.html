@@ -183,7 +183,11 @@
     .stat-tile { min-height: 66px; padding: 11px; border: 1px solid #2c322e; border-radius: 8px; background: #171a19; }
     .stat-value { font-family: Georgia, "Times New Roman", serif; font-size: 18px; }
     .stat-label { margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.35; }
-    .stat-modifier { display: block; margin-top: 2px; color: var(--purple); cursor: help; font-size: .78em; line-height: 1.2; white-space: nowrap; }
+    .stat-modifier { display: block; max-width: 100%; margin-top: 2px; color: var(--purple); cursor: help; font-size: .78em; line-height: 1.2; overflow-wrap: anywhere; }
+    .stat-modifier:nth-of-type(4n + 1) { color: var(--purple); }
+    .stat-modifier:nth-of-type(4n + 2) { color: var(--blue); }
+    .stat-modifier:nth-of-type(4n + 3) { color: var(--green); }
+    .stat-modifier:nth-of-type(4n + 4) { color: var(--gold); }
     .aside-panel { padding: 16px; }
     .aside-panel + .aside-panel { margin-top: 13px; }
     .aside-heading { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
@@ -321,14 +325,15 @@
      * CAMPAIGN SETUP
      * Add variants as nested options on an ability to keep its category slot.
      * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
-     * Add statEffects to an ability to apply a timed, source-labeled stat bonus when used.
-     * statEffects on abilities tagged "passive" apply continuously and ignore duration.
+     * Add statEffects to an ability or racial gift to apply a source-labeled stat bonus.
+     * Effects stack and render separately; active effects need duration, while "passive" effects apply continuously.
+     * Give every statEffect a unique id within its ability or gift.
      * Add costEffects to a passive to reduce mana/stamina costs for selected targets.
      * Cost effect targets can also use "others" to affect everyone except the source.
 
      * Each effect uses { id, resource, amount, target }; set amount to "XX" to ask on use.
      * Resource effect amounts may be negative to spend a resource, or positive to restore it.
-     * Targets can be "self", "party", "tagged", or "self-and-tagged" (characters with abilities carrying one configured tag, matched case-insensitively).
+     * Targets can be "self", "others", "party", "tagged", or "self-and-tagged" (characters with abilities carrying one configured tag, matched case-insensitively).
      * Durations count down on each affected character's turn.
      * Example: statEffects: [{ id: "focus-magic", stat: "magic", bonus: "1D8", duration: 1, target: "self" }]. For tagged targets, add tags: ["Melee"].
      *
@@ -348,7 +353,7 @@
         id: "Jamez", name: "Bob Smith", race: "Smoulder", magicspecialty: "Astral",
         rank: "Bronze", initials: "BS", color: "#d8aa67", avatarBg: "#352b1e",
         resources: { health: 50, mana: 300, stamina: 300 },
-        stats: { manaRecovery: 12, staminaRecovery: 64, physicalAttack: "2D8-2", damageResistance: "4D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
+        stats: { manaRecovery: 12, staminaRecovery: 64, physicalAttack: "2D8-2", damageResistance: "3D8-1", magic: "4D8+2.01", magicResistance: "3D8", speed: 32, reflexes: 5 },
         essences: ["Magic", "Mirror", "Flesh", "Doppelganger"],
         abilities: [
           { id: "bob-teleport", name: "Teleport", category: "Magic", summary: "Teleport to a point within sight.", description: "Teleports the user to a point within sight, with a maximum limit of 100 km, and You can also teleport essence users of Bronze rank and below with you for a cost of +5 per person; Iron rankers and below don\'t have a mana cost to teleport", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
@@ -393,13 +398,23 @@
             { id: "sanguine-horror-stamina", resource: "stamina", amount: 6, target: "self" }
           ] },
           { id: "bob-mirage-step", name: "Mirage Step", category: "Doppelganger", summary: "Move instantly to a nearby location, leaving an afterimage.", description: "Move instantly to a nearby location, leaving an afterimage. Can be used twice, with one use regained every 6 turns after it is spent. When enemies attack an afterimage, they are trapped in a short lived illusion.", mana: 10, stamina: 10, cooldown: 0, charges: 2, recharge: 6, tags: ["Special Ability", "Dimension", "illusion", "movement"] },
-          { id: "bob-reflective-aegis", name: "Reflective Aegis", category: "Doppelganger", description: "Cover an ally in a protective mirrored sheen.", mana: 26, stamina: 8, cooldown: 3, tags: ["mirror", "warding"] },
-          { id: "bob-lantern-of-dawn", name: "Lantern of Dawn", category: "Doppelganger", description: "Fill the area with reassuring, radiant light.", mana: 20, stamina: 4, cooldown: 2, tags: ["sun", "support"] },
-          { id: "bob-open-the-cage", name: "Open the Cage", category: "Doppelganger", description: "Release an ally from a snare or restricting effect.", mana: 16, stamina: 10, cooldown: 2, tags: ["cage", "escape"] },
-          { id: "bob-open-the-cage", name: "Open the Cage", category: "Doppelganger", description: "Release an ally from a snare or restricting effect.", mana: 16, stamina: 10, cooldown: 2, tags: ["cage", "escape"] }
+          { id: "bob-counterfeit-combatant", name: "Counterfeit Combatant", category: "Doppelganger", summary: "damage increases by 2d8s", description: "Grow to a large form(2x2) and gain temporary proficiency with armour and melee weapons. Your maximum stamina increases by 50, your damage is increased by 2d10s, your damage resistance is increased by 1D10 and gain an extra +6 to stamina recovery.", mana: 60, stamina: 0, cooldown: 3600, tags: ["Special Ability", "Shapeshift", "Boon"], statEffects: [
+            { id: "counterfeit-attack", stat: "physicalAttack", bonus: "2D10", duration: 10, target: "self" },
+            { id: "counterfeit-resistance", stat: "damageResistance", bonus: "1D10", duration: 10, target: "self" }
+          ]  },
+          { id: "bob-unexpected-allies", name: "Unexpected Allies", category: "Doppelganger", summary: "Switch positions of all enemies and allies.", description: "You and your allies take an illusionary form of nearby enemies for a minute but you can all still recognise each other, everyone is randomly switch teleported. Also create illusions of your allies", mana: 60, stamina: 0, cooldown: 100, tags: ["Special Ability", "Dimension", "illusion", "Teleport"] },
+          { id: "bob-echo-spirit", name: "Echo Spirit", category: "Doppelganger", summary: "An Incorporeal entity that can mimic the form of allies and enemies.", description: "An incorporeal entity that can mimic the form of allies and enemies as well as switch teleport with mimicked allies as well as mirroring ally's movements and attacks but can't inflict damage. While subsumed into the summoners aura, the summoner can manipulate it into projecting false traits, mimicking others auras or can be used to lift objects lighter than 10kg", mana: 0, stamina: 0, cooldown: 0, tags: ["Ritual", "Familiar", "passive"] },
+          { id: "bob-seeing-double", name: "Seeing Double", category: "Doppelganger", summary: "Decrease perception of enemies within your aura.", description: "Decrease perception of enemies within your aura and you can see through illusions upto bronze rank.", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Perception", "Illusion", "passive"] }
         ],
         racialGifts: [
-          { id: "bob-mirror-born", name: "Mirror-born", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] }
+          { id: "bob-strengthened-flesh", name: "Strengthened Flesh", summary: "Increased damage resistance.", description: "Your Smoulder ancestry and flesh powers have mutated you into a combination of both; you have increased damage resistance.", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental", "passive"], statEffects: [
+            { id: "strengthened-flesh-resistance", stat: "damageResistance", bonus: "1D8", target: "self" }
+          ] },
+          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"]},
+          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
+          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
+          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
+          { id: "bob-mirror-born", name: "Mirror-born", summary: "A racial gift that leaves a brief reflective afterimage.", description: "A racial gift that leaves a brief reflective afterimage.", cooldown: 3, duration: 2, tags: ["illusion", "movement"] },
         ]
       },
       {
@@ -572,7 +587,7 @@
         effect.bonus.trim() &&
         Number.isInteger(effect.duration) &&
         effect.duration > 0 &&
-        ["self", "party", "tagged", "self-and-tagged"].includes(effect.target) &&
+        ["self", "others", "party", "tagged", "self-and-tagged"].includes(effect.target) &&
         (!["tagged", "self-and-tagged"].includes(effect.target) ||
           (Array.isArray(effect.tags) && effect.tags.length > 0 && effect.tags.every((tag) => typeof tag === "string" && tag.trim())))
       );
@@ -1154,7 +1169,7 @@
       const selectedAbility = selectedAbilityFor(character, ability);
       const variantId = selectedAbility.id === ability.id ? null : selectedAbility.id;
       const stateKey = variantId ? `${ability.id}::${variantId}` : ability.id;
-      const passive = !isRacialGift && selectedAbility.tags.includes("passive");
+      const passive = selectedAbility.tags.includes("passive");
       const manaCost = isRacialGift ? 0 : selectedAbility.mana;
       const staminaCost = isRacialGift ? 0 : selectedAbility.stamina;
       const manaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "mana", manaCost);
@@ -1220,7 +1235,7 @@
       const gifts = character.racialGifts || [];
       if (!gifts.length) return "";
       return `<section class="ability-section racial-gifts-section">
-        <div class="ability-heading"><div><div class="section-title">Racial gifts</div><div class="section-helper" style="margin-top:5px">Innate abilities cost no mana or stamina; each can be used once per owner turn.</div></div><div class="section-helper">${gifts.length} configured</div></div>
+        <div class="ability-heading"><div><div class="section-title">Racial gifts</div><div class="section-helper" style="margin-top:5px">Innate abilities cost no mana or stamina; tag a gift “passive” to apply it continuously without a use button.</div></div><div class="section-helper">${gifts.length} configured</div></div>
         <div class="ability-group"><div class="ability-list">${gifts.map((gift) => renderAbilityRow(character, gift, true)).join("")}</div></div>
       </section>`;
     }
