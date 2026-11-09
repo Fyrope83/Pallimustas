@@ -346,8 +346,8 @@
   <script>
     /*
      * CAMPAIGN SETUP
-     * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
-     * Add statEffects to an ability or racial gift to apply a source-labeled stat bonus.
+     * Stats may be numbers or dice-formula strings; base recovery stats must stay numeric.
+     * Add statEffects to an ability or racial gift to apply a source-labeled stat bonus. Numeric bonuses and flat strings such as "+6" or "6" are valid; recovery modifiers must be flat numeric bonuses, not dice.
      * Effects stack and render separately; active effects need duration, while "passive" effects apply continuously.
      * Add costEffects to a passive to reduce mana/stamina costs for selected targets; abilityTags can limit which abilities are affected.
      * Add enhancements: [{ stat, bonus }] to an ability to configure its Avatar of Speed bonus. The matching passive's enhancement rule controls which tagged abilities receive it. Prose-only effects must be represented as statEffects before they can be enhanced.
@@ -493,8 +493,8 @@
             { id: "life-fire-stamina", stat: "staminaRecovery", bonus: "6", target: "self" }
           ] },
           { id: "bob-heart-of-the-earth", name: "Heart of the Earth", summary: "Increase stamina and mana recovery after meditation.", description: "Increase stamina and mana recovery by 6 for 10 turns after meditating.", cooldown: 0, duration: 10, tags: ["Racial Gift", "elemental", "Buff"], statEffects: [
-            { id: "heart-of-the-earth-stamina", stat: "staminaRecovery", bonus: "6", target: "self" },
-            { id: "heart-of-the-earth-mana", stat: "manaRecovery", bonus: "6", target: "self"}
+            { id: "heart-of-the-earth-stamina", stat: "staminaRecovery", bonus: "6", duration: 10, target: "self" },
+            { id: "heart-of-the-earth-mana", stat: "manaRecovery", bonus: "6", duration: 10, target: "self"}
           ] },
           { id: "bob-backup-plan", name: "The Backup Plan", summary: "Make an object explode in relation to it's size.", description: "Make an object explode in relation to it's size. Must be holdable", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental"] },
         ]
@@ -525,9 +525,9 @@
           { id: "pat-mana-tide", name: "Mana Tide", category: "Balance", summary: "Draw mana from the astral to replenish allies.", description: "All party members gain an accelerating mana-recovery bonus over 300 rounds, reaching +40 mana recovery per turn on round 300. While Mana Tide is active, each 10 mana an ally actually spends on abilities adds 1/6 mana recovery per turn to that ally; every 60 mana spent adds +1 recovery per turn.", mana: 60, stamina: 0, cooldown: 999, manaTide: { durationRounds: 300, maxRecovery: 40, manaPerRecovery: 60, growth: "quadratic" }, tags: ["Special Ability", "Recovery", "Counter-Execute"] },
           { id: "pat-juxtapose", name: "Juxtapose", category: "Balance", summary: "Swap the location of two entities.", description: "Swap the location of two allies and/or enemies. You must be able to see both subjects. If an ally resists or prevents it, it is negated. Enemies affected by this ability take +10% from all sources for 1 turn.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
           { id: "pat-instant-karma", name: "Instant Karma", category: "Balance", summary: "Target takes the damage it just dealt", description: "The target suffers damage of the same amount and type. This is considered retributive damage. Reducing or negating the original damage does not reduce or negate the retributive damage. (Only affects entities with a motive spirit).", mana: 10, stamina: 0, cooldown: 0, tags: ["Spell", "Retribution", "Holy"] },
-          { id: "pat-equillibrium", name: "Equilibrium", category: "Balance", summary: "Meditate to accrue instances of [Integrity] and [Resistant].", description: "Meditate to accrue 6 instances of [Integrity] and 12 instances of [Resistant] per turn up to a maximum of 20 Integrity and 40 Resistant.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Buff", "Recovery"], afflictionEffects: [
-            { id: "equilibrium-integrity", afflictionId: "integrity", target: "self", stacks: 6, duration: 1, maxStacksPerTurn: 6, maxTotalStacks: 20 },
-            { id: "equilibrium-resistant", afflictionId: "resistant", target: "self", stacks: 12, duration: null, maxStacksPerTurn: 12, maxTotalStacks: 40 }
+          { id: "pat-equillibrium", name: "Equilibrium", category: "Balance", summary: "Meditate to accrue instances of [Integrity] and [Resistant].", description: "Meditate to accrue 6 instances of [Integrity] and 12 instances of [Resistant] per turn up to a maximum of 20 Integrity and 40 Resistant. Beacon of Hope increases stacks to 9 and 18 gained respectively", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Buff", "Recovery"], afflictionEffects: [
+            { id: "equilibrium-integrity", afflictionId: "integrity", target: "self", stacks: 9, duration: 1, maxStacksPerTurn: 6, maxTotalStacks: 20 },
+            { id: "equilibrium-resistant", afflictionId: "resistant", target: "self", stacks: 18, duration: null, maxStacksPerTurn: 12, maxTotalStacks: 40 }
           ]},
           { id: "pat-power-lock", name: "Power Lock", category: "Cage", summary: "When the target uses an ability, a second one goes on cooldown.", description: "When the target uses an ability, a random other ability goes on cooldown and uses mana, as if it has been used, if the ability had no mana cost, the target suffers disruptive-force damage commensurate with the strength of the ability. If the target has no other abilities, the ability it used has doubled cooldown, or if the ability has no cooldown, it becomes unavailable for a brief period.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Curse", "Magic"] },
           { id: "pat-verdant-cage", name: "Verdant Cage", category: "Cage", summary: "Grow vines to restrain a target.", description: "Grow vines to restrain a target. More effective in areas already containing pant life. Binding plants have damaging thorns that do 1D8 damage per turn.", mana: 0, stamina: 0, cooldown: 0, tags: ["Spell", "Conjuration", "Poison"] },
@@ -536,10 +536,11 @@
           ]},
           { id: "pat-large-pockets", name: "Large Pockets", category: "Cage", summary: "You have a dimensional storage space accessible through your pockets", description: "You have a dimensional storage space accessible through your pockets. The entry can be stretched as big as you needbut anything with a motive spirit cannot enter", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Dimension", "passive"] },
           { id: "pat-unlocked-potential", name: "Unlocked Potential", category: "Cage", summary: "Overcharge mana and stamina; negative resources prevent further ability use.", description: "You can push yourself further than you could before, spending mana or stamina below zero. While either resource is negative, you cannot activate any abilities until both return to zero or higher.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "passive"] },
-          { id: "pat-counterfeit-combatant", name: "Counterfeit Combatant", category: "Vessel", summary: "damage increases by 2d10s", description: "Grow to a large form(2x2) and gain temporary proficiency with armour and melee weapons. Your maximum stamina increases by 50, your damage is increased by 2d10s, your damage resistance is increased by 1D10 and gain an extra +6 to stamina recovery.", mana: 60, stamina: 0, cooldown: 3600, tags: ["Special Ability", "Shapeshift", "Buff"], statEffects: [
+          { id: "pat-counterfeit-combatant", name: "Counterfeit Combatant", category: "Vessel", summary: "damage increases by 2d10s", description: "Grow to a large form(2x2) and gain temporary proficiency with armour and melee weapons. Your maximum stamina increases by 50, your damage is increased by 2d10s, your damage resistance is increased by 1D10 and gain an extra +6 to stamina recovery. Beacon of Hope increases stat gain to +3D10 and +2D10, +9 and +75 to damage, damage resistance, stamina recovery and stamina respectively", mana: 60, stamina: 0, cooldown: 3600, tags: ["Special Ability", "Shapeshift", "Buff"], enhancements: [
+            { stat: "physicalAttack", bonus: "1D10" }, { stat: "damageResistance", bonus: "1D10" }, { stat: "staminaRecovery", bonus: 3 }, { resource: "stamina", bonus: 25 } ], statEffects: [
             { id: "counterfeit-attack", stat: "physicalAttack", bonus: "2D10", duration: 10, target: "self" },
             { id: "counterfeit-resistance", stat: "damageResistance", bonus: "1D10", duration: 10, target: "self" },
-            { id: "counterfeit-stamina", stat: "staminaRecovery", bonus: "+6", duration: 10, target: "self" } ], resourceEffects: [
+            { id: "counterfeit-stamina", stat: "staminaRecovery", bonus: 6, duration: 10, target: "self" } ], resourceEffects: [
             { id: "counterfeit-stamina-max", resource: "stamina", amount: 50, target: "self" },
           ] },
           { id: "pat-projection", name: "Projection", category: "Vessel", summary: "Summon a small drone to project your senses into.", description: "Project your senses into a small flying drone that is normal rank and can move around. The drone cannot attack but your aura can be projected into it with little control.", mana: 10, stamina: 0, cooldown: 10, tags: ["Special Ability", "Conjuration"] },
@@ -558,13 +559,23 @@
               { id: "avatar-speed-momentum-stacks", afflictionId: "momentum", target: "self", stacksFromInput: { field: "spacesMoved", divisor: 10 }, duration: 1, maxStacksPerTurn: 999, maxTotalStacks: 999}
             ] }
           ] },
-          { id: "pat-projection", name: "Projection", category: "Vessel", summary: "Summon a small drone to project your senses into.", description: "Project your senses into a small flying drone that is normal rank and can move around. The drone cannot attack but your aura can be projected into it with little control.", mana: 10, stamina: 0, cooldown: 10, tags: ["Special Ability", "Conjuration"] }
+          { id: "pat-complete-unification", name: "Complete Unification", category: "Vessel", summary: "You are a gestalt entity and you are stronger because of it.", description: "Your body and soul are one, Your aura is greatly strengthened and you have a greater resistance to astral forces or effects that utilise the soul-body disconnect. Your resistance to hostile dimension effects is increased and dimension effects, disruptive force damage and transcendent damage you deal is increased. Physicall reallity around you is more stable and you are able to sense nearby astral space aperatures and proto-spaces coterminous to your location. You can enter them even if they\'re closed or sealed. If you can enter the astral, you can create a small zone of physical reality around you. When suffering lethal damage, instead of dying. Your new body wil undergo a nirvanic rebirth, returning to a state of full integrity. This effect can only be triggered again after you rank up from the last time it was used.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Dimension", "passive"] }
         ],
         equipment: [],
         titles: [],
         inventory: [],
         racialGifts: [
-          { id: "garran-stone-blood", name: "Stoneblood", description: "Harden your stonekin hide against the next blow.", cooldown: 3, duration: 2, tags: ["root", "defense"] }
+          { id: "pat-thighs-of-steel", name: "Thighs of Steel", summary: "Increased Strength, Speed and Reflexes.", description: "Increased Strength by 1D8, Speed by 6 and Reflexes by 1.", cooldown: 0, duration: 0, tags: ["Racial Gift", "Buff", "passive"], statEffects: [
+            { id: "thighs-of-steel-strength", stat: "physicalAttack", bonus: "1D8", target: "self" },
+            { id: "thighs-of-steel-speed", stat: "speed", bonus: 6, target: "self" },
+            { id: "thighs-of-steel-reflexes", stat: "reflexes", bonus: 1, target: "self" }
+          ]},
+          { id: "pat-ancestral-switftness", name: "Ancestral Swiftness", summary: "Increased Speed and Reflexes.", description: "Increased Speed by 6 and Reflexes by 1.", cooldown: 0, duration: 0, tags: ["Racial Gift", "Buff", "passive"], statEffects: [
+            { id: "ancestral-swiftness-speed", stat: "speed", bonus: 6, target: "self" },
+            { id: "ancestral-swiftness-reflexes", stat: "reflexes", bonus: 1, target: "self" }
+          ] },
+          { id: "pat-beacon-of-hope", name: "Beacon of Hope", summary: "Buffing abiities have increased effect.", description: "Buffing abilities have increased effect and are greatly enhanced if targeting allies", cooldown: 0, duration: 0, tags: ["Racial Gift", "Buff", "passive", "enhancement"], enhancement: { target: "self", targetTags: ["Buff"] } }
+
         ]
       },
       {
@@ -574,22 +585,22 @@
         stats: { manaRecovery: 11, staminaRecovery: 20, physicalAttack: "3D8+1", damageResistance: "3D8", magic: "5D8+1", magicResistance: "3D8+2", speed: 17, reflexes: 19 },
         essences: ["Mist", "Thorn", "Echo", "Hunger"],
         abilities: [
-          { id: "sera-phantom-thread", name: "Phantom Thread", category: "Arcana", description: "Weave a nearly invisible strand of deceptive magic.", mana: 14, stamina: 0, cooldown: 1, tags: ["illusion", "binding"], variants: [
+          { id: "sera-phantom-thread", name: "Phantom Thread", category: "Arcana", summary: "Weave a nearly invisible strand of deceptive magic.", description: "Weave a nearly invisible strand of deceptive magic.", mana: 14, stamina: 0, cooldown: 1, tags: ["illusion", "binding"], variants: [
             { id: "hollow-trap", name: "Hollow trap", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, tags: ["binding", "mist"] }
           ] },
-          { id: "sera-mist-double", name: "Mist Double", category: "Arcana", description: "Create a moving copy of yourself in a veil of mist.", mana: 20, stamina: 5, cooldown: 2, tags: ["illusion", "mist"] },
-          { id: "sera-thorn-hex", name: "Thorn Hex", category: "Arcana", description: "Curse a target with spectral thorns that punish movement.", mana: 24, stamina: 4, cooldown: 2, tags: ["thorn", "curse"] },
-          { id: "sera-echoing-veil", name: "Echoing Veil", category: "Arcana", description: "Bend sound and sight around a chosen companion.", mana: 18, stamina: 6, cooldown: 2, tags: ["echo", "illusion"] },
-          { id: "sera-hollow-snare", name: "Hollow Snare", category: "Arcana", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, tags: ["binding", "mist"] },
-          { id: "sera-nightfang", name: "Nightfang", category: "Combat", description: "Strike from concealment and leave a lingering wound.", mana: 4, stamina: 22, cooldown: 1, tags: ["blood", "melee"] },
-          { id: "sera-thorn-dance", name: "Thorn Dance", category: "Combat", description: "Whirl between foes with a pair of curved blades.", mana: 8, stamina: 30, cooldown: 2, tags: ["thorn", "movement"] },
-          { id: "sera-echo-strike", name: "Echo Strike", category: "Combat", description: "A false swing distracts before the real blow lands.", mana: 12, stamina: 18, cooldown: 2, tags: ["echo", "illusion"] },
-          { id: "sera-hunters-mark", name: "Hunter's Mark", category: "Combat", description: "Mark a target and press the attack with relentless precision.", mana: 10, stamina: 20, cooldown: 2, tags: ["hunger", "blood"] },
-          { id: "sera-vanishing-cut", name: "Vanishing Cut", category: "Combat", description: "Disappear for a heartbeat and strike from a new angle.", mana: 14, stamina: 24, cooldown: 3, tags: ["movement", "illusion"] },
-          { id: "sera-mistwalk", name: "Mistwalk", category: "Technique", description: "Move through a low drift of mist to a nearby spot.", mana: 8, stamina: 12, cooldown: 0, tags: ["movement", "mist"] },
-          { id: "sera-false-footsteps", name: "False Footsteps", category: "Technique", description: "Leave misleading sounds leading away from your trail.", mana: 10, stamina: 8, cooldown: 1, tags: ["illusion", "echo"] },
-          { id: "sera-thorn-vault", name: "Thorn Vault", category: "Technique", description: "Spring over an obstacle with a thorned tether.", mana: 0, stamina: 18, cooldown: 1, tags: ["movement", "thorn"] },
-          { id: "sera-shadow-read", name: "Shadow Read", category: "Technique", description: "A constant reading of a foe's silhouette and intent.", mana: 0, stamina: 0, cooldown: 0, tags: ["focus", "illusion", "passive"] },
+          { id: "sera-mist-double", name: "Mist Double", category: "Arcana", summary: "Create a moving copy of yourself in a veil of mist.", description: "Create a moving copy of yourself in a veil of mist.", mana: 20, stamina: 5, cooldown: 2, tags: ["illusion", "mist"] },
+          { id: "sera-thorn-hex", name: "Thorn Hex", category: "Arcana", summary: "Curse a target with spectral thorns that punish movement.", description: "Curse a target with spectral thorns that punish movement.", mana: 24, stamina: 4, cooldown: 2, tags: ["thorn", "curse"] },
+          { id: "sera-echoing-veil", name: "Echoing Veil", category: "Arcana", summary: "Bend sound and sight around a chosen companion.", description: "Bend sound and sight around a chosen companion.", mana: 18, stamina: 6, cooldown: 2, tags: ["echo", "illusion"] },
+          { id: "sera-hollow-snare", name: "Hollow Snare", category: "Arcana", summary: "Draw a shadowy snare closed around a distant foe.", description: "Draw a shadowy snare closed around a distant foe.", mana: 26, stamina: 0, cooldown: 3, tags: ["binding", "mist"] },
+          { id: "sera-nightfang", name: "Nightfang", category: "Combat", summary: "Strike from concealment and leave a lingering wound.", description: "Strike from concealment and leave a lingering wound.", mana: 4, stamina: 22, cooldown: 1, tags: ["blood", "melee"] },
+          { id: "sera-thorn-dance", name: "Thorn Dance", category: "Combat", summary: "Whirl between foes with a pair of curved blades.", description: "Whirl between foes with a pair of curved blades.", mana: 8, stamina: 30, cooldown: 2, tags: ["thorn", "movement"] },
+          { id: "sera-echo-strike", name: "Echo Strike", category: "Combat", summary: "A false swing distracts before the real blow lands.", description: "A false swing distracts before the real blow lands.", mana: 12, stamina: 18, cooldown: 2, tags: ["echo", "illusion"] },
+          { id: "sera-hunters-mark", name: "Hunter's Mark", category: "Combat", summary: "Mark a target and press the attack with relentless precision.", description: "Mark a target and press the attack with relentless precision.", mana: 10, stamina: 20, cooldown: 2, tags: ["hunger", "blood"] },
+          { id: "sera-vanishing-cut", name: "Vanishing Cut", category: "Combat", summary: "Disappear for a heartbeat and strike from a new angle.", description: "Disappear for a heartbeat and strike from a new angle.", mana: 14, stamina: 24, cooldown: 3, tags: ["movement", "illusion"] },
+          { id: "sera-mistwalk", name: "Mistwalk", category: "Technique", summary: "Move through a low drift of mist to a nearby spot.", description: "Move through a low drift of mist to a nearby spot.", mana: 8, stamina: 12, cooldown: 0, tags: ["movement", "mist"] },
+          { id: "sera-false-footsteps", name: "False Footsteps", category: "Technique", summary: "Leave misleading sounds leading away from your trail.", description: "Leave misleading sounds leading away from your trail.", mana: 10, stamina: 8, cooldown: 1, tags: ["illusion", "echo"] },
+          { id: "sera-thorn-vault", name: "Thorn Vault", category: "Technique", summary: "Spring over an obstacle with a thorned tether.", description: "Spring over an obstacle with a thorned tether.", mana: 0, stamina: 18, cooldown: 1, tags: ["movement", "thorn"] },
+          { id: "sera-shadow-read", name:"Shadow Read", category: "Technique", summary: "A constant reading of a foe's silhouette and intent.", description: "A constant reading of a foe's silhouette and intent.", mana: 0, stamina: 0, cooldown: 0, tags: ["focus", 'illusion', 'passive'] },
           { id: "sera-quickblood", name: "Quickblood", category: "Technique", description: "Spend a burst of vitality to sharpen your reflexes.", mana: 4, stamina: 16, cooldown: 2, tags: ["blood", "movement"] },
           { id: "sera-mist-mend", name: "Mist Mend", category: "Support", description: "Wrap a companion in cool mist that eases their wounds.", mana: 18, stamina: 0, cooldown: 2, tags: ["mist", "healing"] },
           { id: "sera-shared-echo", name: "Shared Echo", category: "Support", description: "Carry an ally's warning across the battlefield instantly.", mana: 12, stamina: 5, cooldown: 1, tags: ["echo", "support"] },
@@ -1009,8 +1020,8 @@
         typeof effect.id === "string" &&
         effect.id.trim() &&
         Object.hasOwn(character.stats, effect.stat) &&
-        typeof effect.bonus === "string" &&
-        effect.bonus.trim() &&
+        ((typeof effect.bonus === "string" && effect.bonus.trim()) ||
+          (typeof effect.bonus === "number" && Number.isFinite(effect.bonus))) &&
         (isToggleable
           ? effect.duration === undefined || (Number.isInteger(effect.duration) && effect.duration > 0)
           : Number.isInteger(effect.duration) && effect.duration > 0) &&
@@ -1119,16 +1130,16 @@
       state.manaTide.spentByCharacter[characterId] = Math.round((previous + amount) * 1e6) / 1e6;
     }
 
-    function effectiveManaRecovery(character) {
-      const bonus = getStatModifiers(character, "manaRecovery").reduce((total, modifier) => {
+    function effectiveRecovery(character, stat) {
+      const bonus = getStatModifiers(character, stat).reduce((total, modifier) => {
         const parsed = parseDiceFormula(modifier.bonus);
         if (!parsed || parsed.dice.size) {
-          console.error(`Mana recovery modifier from ${modifier.source} must be a flat numeric value.`, modifier);
+          console.error(`${statDisplayName(stat)} modifier from ${modifier.source} must be a flat numeric value to affect recovery.`, modifier);
           return total;
         }
         return total + parsed.flat;
       }, 0);
-      return Math.max(0, character.stats.manaRecovery + bonus);
+      return Math.max(0, character.stats[stat] + bonus);
     }
 
     function hasUnlockedPotential(character) {
@@ -2582,8 +2593,8 @@
       const progress = state.characters[character.id];
       let manaTideEnded = false;
       // Recovery is capped at each character's configured maximum; no resource can overflow.
-      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + effectiveManaRecovery(character));
-      progress.resources.stamina = Math.min(character.resources.stamina, progress.resources.stamina + character.stats.staminaRecovery);
+      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + effectiveRecovery(character, "manaRecovery"));
+      progress.resources.stamina = Math.min(character.resources.stamina, progress.resources.stamina + effectiveRecovery(character, "staminaRecovery"));
       recoverFromAfflictions(character);
       const deactivatedAbilities = [];
       for (const ability of allCharacterAbilities(character)) {
