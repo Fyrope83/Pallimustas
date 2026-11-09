@@ -261,6 +261,19 @@
     .ability-cost-inputs { display: grid; gap: 12px; }
     .ability-cost-input { display: grid; gap: 5px; color: var(--muted); font-size: 11px; }
     .ability-cost-input input { width: 100%; padding: 9px 10px; border: 1px solid var(--line-bright); border-radius: 7px; background: #171a19; color: var(--text); font: inherit; }
+    .affliction-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: 10px; padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    .affliction-form label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; }
+    .affliction-form input, .affliction-form select { min-width: 0; width: 100%; padding: 8px; border: 1px solid var(--line-bright); border-radius: 6px; background: #171a19; color: var(--text); font: inherit; }
+    .affliction-player { padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    .affliction-player + .affliction-player { margin-top: 10px; }
+    .affliction-player-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .affliction-player-head .section-title { flex: 1; }
+    .affliction-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+    .affliction-entry-name { font-size: 12px; font-weight: 650; }
+    .affliction-entry-detail { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .affliction-entry-actions { display: flex; align-items: center; gap: 6px; }
+    .affliction-count { min-width: 44px; color: var(--gold); font-size: 10px; text-align: center; }
+    @media (max-width: 800px) { .affliction-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } .affliction-form .button { grid-column: 1 / -1; } }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
     @media (max-width: 930px) {
@@ -276,8 +289,8 @@
       .brand { padding: 0 2px; }
       .brand-mark { width: 34px; height: 34px; }
       .section-label, .sidebar-bottom { display: none; }
-      .sidebar nav { display: flex; gap: 6px; margin-top: 11px; }
-      .sidebar nav .nav-button { width: auto; padding: 8px 10px; }
+      .sidebar nav { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+      .sidebar nav .nav-button { flex: 1 1 auto; justify-content: center; width: auto; padding: 8px 10px; }
       #roster { display: none; }
       .workspace { padding: 0 16px 28px; }
       .topbar { height: 54px; }
@@ -312,6 +325,7 @@
       <nav aria-label="Main navigation">
         <button class="nav-button active" data-view="overview"><span class="nav-icon">▦</span> DM Overview</button>
         <button class="nav-button" data-view="sheet"><span class="nav-icon">▤</span> Character Sheet</button>
+        <button class="nav-button" data-view="buffs"><span class="nav-icon">✧</span> Buffs</button>
       </nav>
       <div class="section-label roster-heading"><span>Party roster</span><span class="roster-count" id="roster-count"></span></div>
       <div class="roster" id="roster"></div>
@@ -335,8 +349,25 @@
      * Stats may be numbers or dice-formula strings; recovery stats must stay numeric.
      * Add statEffects to an ability or racial gift to apply a source-labeled stat bonus.
      * Effects stack and render separately; active effects need duration, while "passive" effects apply continuously.
-     * Add costEffects to a passive to reduce mana/stamina costs for selected targets.
+     * Add costEffects to a passive to reduce mana/stamina costs for selected targets; abilityTags can limit which abilities are affected.
+     * Add enhancements: [{ stat, bonus }] to an ability to configure its Avatar of Speed bonus. The matching passive's enhancement rule controls which tagged abilities receive it. Prose-only effects must be represented as statEffects before they can be enhanced.
+     * A variant of a passive ability can set activeVersion: true to expose its own costs, cooldown, inputs, and effects as a usable action while keeping the parent passive.
+     * Add inputFields: [{ id, label, min }] to request a whole-number value on use. Affliction effects can convert it to stacks with stacksFromInput: { field, divisor }.
+     * Add afflictionEffects to abilities to apply glossary statuses: { id, afflictionId, target, stacks, duration, maxStacksPerTurn }.
+     * Add "unlocked-potential" to a character's tags to allow mana/stamina ability spending below zero. While either is negative, they cannot activate any abilities until both are nonnegative.
+     * Use trigger: "resourceChange" with resourceEffectId and condition: "increase" or "decrease" for conditional applications.
+     * Set stacksFromPercentageOfMax: true to apply one stack per 1% of the actual resource change, rounded up.
+     * maxStacksPerTurn is counted per ability effect and target, then resets when its source character ends their turn.
+     * A missing duration or duration: null means permanent; timed effects decrease on the affected character's turns.
+     * Use maxTotalStacks to cap an ability's stacks from that source; maxStacksPerTurn caps its additions per source turn.
+     * Example: afflictionEffects: [{ id: "equilibrium-ward", afflictionId: "impervious", target: "self", stacks: 1, duration: null, maxStacksPerTurn: 2, maxTotalStacks: 10 }].
+     * Glossary entries may define statEffects: [{ stat, bonus, perStack }]; perStack defaults to true. Use null duration for a status that does not expire.
+     * Glossary resourceEffects use { resource, amountPerStack } and restore that resource on each affected character's turn.
+     * Toggle abilities use activeMode: "toggle" and may define upkeep costs per owner turn. Cost reductions apply normally on activation; for upkeep, each normal reduction is divided by 10 per second and multiplied by the 6-second turn length.
+     * Toggle statEffects stay active until the ability is turned off and do not require a duration.
      * Cost effect targets can also use "others" to affect everyone except the source.
+     * Mana Tide uses { durationRounds, maxRecovery, manaPerRecovery, growth }.
+     * Mana spent after cost reductions while it is active adds the matching recovery bonus to the character who paid it.
 
      * Each effect uses { id, resource, amount, target }; set amount to "XX" to ask on use.
      * Resource effect amounts may be negative to spend a resource, or positive to restore it.
@@ -379,7 +410,7 @@
             { id: "spirit-reaper-magic", stat: "magic", bonus: "1D8", duration: 1, target: "self" },
             { id: "spirit-reaper-attack", stat: "physicalAttack", bonus: "1D8", duration: 1, target: "self" }
           ] },
-          { id: "bob-juxtapose", name: "Juxtapose", category: "Magic", summary: "Swap the location of two entities.", description: "Swap the location of two allies and/or enemies. You must be able to see both subjects. If an ally resists or prevents it, it is negated.Enemies affected by this ability take +10% from all sources for 1 turn.", mana: 40, stamina: 8, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
+          { id: "bob-juxtapose", name: "Juxtapose", category: "Magic", summary: "Swap the location of two entities.", description: "Swap the location of two allies and/or enemies. You must be able to see both subjects. If an ally resists or prevents it, it is negated.Enemies affected by this ability take +10% from all sources for 1 turn.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
           { id: "bob-power-lock", name: "Power Lock", category: "Magic", summary: "When the target uses an ability, a second one goes on cooldown.", description: "When the target uses an ability, a random other ability goes on cooldown and uses mana, as if it has been used, if the ability had no mana cost, the target suffers disruptive-force damage commensurate with the strength of the ability. If the target has no other abilities, the ability it used has doubled cooldown, or if the ability has no cooldown, it becomes unavailable for a brief period.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Curse", "Magic"] },
           { id: "bob-strong-soul", name: "Strong Soul", category: "Magic", summary: "Resistances increased and you can physically interact with incorporeal entities.", description: "Disruptive force damage is reduced by a large amount, other damage is reduced by a small amount, increased curse, magic and unholy resistance. You can physically interact with incorporeal entities", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Abiity", "Dimension", "Magic", "passive"], statEffects: [
             { id: "strong-soul-damage-resistance", stat: "damageResistance", bonus: "1D8", target: "self" },
@@ -393,11 +424,11 @@
           { id: "bob-enter-reflections", name: "Enter Reflections", category: "Mirror", summary: "Use reflections as a portal.", description: "Use reflections as a portal to another reflection you can see or is within your aura. Can be used as a bonus action.", mana: 10, stamina: 10, cooldown: 0, usesPerTurn: 2, tags: ["Special Ability", "Teleport", "Illusion"], variants: [
             { id: "morph-reflections", name: "Morph Reflections", summary: "Morph the shape of Refections you can see", description: "Morph the shape of Refections you can see for an increased cost with a cooldown.", mana: 20, stamina: 20, cooldown: 1}
           ] },
-          { id: "bob-self-actualisation", name: "Self Actualisation", category: "Mirror", summary: "Reduce stamina and mana costs.", description: "You have uncovered your flaws and resolved them; ALL stamina and mana costs reduced by 15. Your confidence has inspired your allies, their stamina and mana costs decrease by 5", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Boon", "passive"], costEffects: [
+          { id: "bob-self-actualisation", name: "Self Actualisation", category: "Mirror", summary: "Reduce stamina and mana costs.", description: "You have uncovered your flaws and resolved them; ALL stamina and mana costs reduced by 15. Your confidence has inspired your allies, their stamina and mana costs decrease by 5", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Buff", "passive"], costEffects: [
             { id: "self-actualisation-self", mana: 15, stamina: 15, target: "self" },
             { id: "self-actualisation-allies", mana: 5, stamina: 5, target: "others" }
           ] },
-          { id: "bob-blood-harvest", name: "Blood Harvest", category: "Flesh", summary: "Drain dead bodies for resources.", description: "Drain the remnant life force of any bodies within your aura, replenishing health, stamina and mana. Only affects targets with blood and can't overcharge.", mana: 10, stamina: 0, cooldown: 0, tags: ["Spell", "Drain", "Boon"], resourceEffects: [
+          { id: "bob-blood-harvest", name: "Blood Harvest", category: "Flesh", summary: "Drain dead bodies for resources.", description: "Drain the remnant life force of any bodies within your aura, replenishing health, stamina and mana. Only affects targets with blood and can't overcharge.", mana: 10, stamina: 0, cooldown: 0, tags: ["Spell", "Drain", "Buff"], resourceEffects: [
             { id: "blood-harvest-health", resource: "health", amount: "XX", target: "self" },
             { id: "blood-harvest-mana", resource: "mana", amount: "XX", target: "self" },
             { id: "blood-harvest-stamina", resource: "stamina", amount: "XX", target: "self" }
@@ -416,10 +447,12 @@
             { id: "sanguine-horror-stamina", resource: "stamina", amount: 6, target: "self" }
           ] },
           { id: "bob-mirage-step", name: "Mirage Step", category: "Doppelganger", summary: "Move instantly to a nearby location, leaving an afterimage.", description: "Move instantly to a nearby location, leaving an afterimage. Can be used twice, with one use regained every 6 turns after it is spent. When enemies attack an afterimage, they are trapped in a short lived illusion.", mana: 10, stamina: 10, cooldown: 0, charges: 2, recharge: 6, tags: ["Special Ability", "Dimension", "illusion", "movement"] },
-          { id: "bob-counterfeit-combatant", name: "Counterfeit Combatant", category: "Doppelganger", summary: "damage increases by 2d8s", description: "Grow to a large form(2x2) and gain temporary proficiency with armour and melee weapons. Your maximum stamina increases by 50, your damage is increased by 2d10s, your damage resistance is increased by 1D10 and gain an extra +6 to stamina recovery.", mana: 60, stamina: 0, cooldown: 3600, tags: ["Special Ability", "Shapeshift", "Boon"], statEffects: [
+          { id: "bob-counterfeit-combatant", name: "Counterfeit Combatant", category: "Doppelganger", summary: "damage increases by 2d10s", description: "Grow to a large form(2x2) and gain temporary proficiency with armour and melee weapons. Your maximum stamina increases by 50, your damage is increased by 2d10s, your damage resistance is increased by 1D10 and gain an extra +6 to stamina recovery.", mana: 60, stamina: 0, cooldown: 3600, tags: ["Special Ability", "Shapeshift", "Buff"], statEffects: [
             { id: "counterfeit-attack", stat: "physicalAttack", bonus: "2D10", duration: 10, target: "self" },
-            { id: "counterfeit-resistance", stat: "damageResistance", bonus: "1D10", duration: 10, target: "self" }
-          ]  },
+            { id: "counterfeit-resistance", stat: "damageResistance", bonus: "1D10", duration: 10, target: "self" },
+            { id: "counterfeit-stamina", stat: "staminaRecovery", bonus: "+6", duration: 10, target: "self" } ], resourceEffects: [
+            { id: "counterfeit-stamina-max", resource: "stamina", amount: 50, target: "self" },
+          ] },
           { id: "bob-unexpected-allies", name: "Unexpected Allies", category: "Doppelganger", summary: "Switch positions of all enemies and allies.", description: "You and your allies take an illusionary form of nearby enemies for a minute but you can all still recognise each other, everyone is randomly switch teleported. Also create illusions of your allies", mana: 60, stamina: 0, cooldown: 100, tags: ["Special Ability", "Dimension", "illusion", "Teleport"] },
           { id: "bob-echo-spirit", name: "Echo Spirit", category: "Doppelganger", summary: "An Incorporeal entity that can mimic the form of allies and enemies.", description: "An incorporeal entity that can mimic the form of allies and enemies as well as switch teleport with mimicked allies as well as mirroring ally's movements and attacks but can't inflict damage. While subsumed into the summoners aura, the summoner can manipulate it into projecting false traits, mimicking others auras or can be used to lift objects lighter than 10kg", mana: 0, stamina: 0, cooldown: 0, tags: ["Ritual", "Familiar", "passive"] },
           { id: "bob-seeing-double", name: "Seeing Double", category: "Doppelganger", summary: "Decrease perception of enemies within your aura.", description: "Decrease perception of enemies within your aura and you can see through illusions upto bronze rank.", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Perception", "Illusion", "passive"] }
@@ -467,34 +500,65 @@
         ]
       },
       {
-        id: "garran", name: "Garran Holt", race: "Stonekin", magicspecialty: "Runic",
-        rank: "Silver", initials: "GH", color: "#b1bdc8", avatarBg: "#283039",
-        resources: { health: 145, mana: 48, stamina: 105 },
-        stats: { manaRecovery: 7, staminaRecovery: 16, physicalAttack: "4D8+2", damageResistance: "5D8+1", magic: "2D8", magicResistance: "4D8", speed: 8, reflexes: 9 },
-        essences: ["Iron", "Root", "Thunder", "Oath"],
+        id: "Pat", name: "Pat", race: "Leonid", magicspecialty: "Improv",
+        rank: "Bronze", initials: "P", color: "#b1bdc8", avatarBg: "#283039",
+        resources: { health: 76, mana: 200, stamina: 400 },
+        stats: { manaRecovery: 12, staminaRecovery: 102, physicalAttack: "2D8", damageResistance: "2D8", magic: "2D8", magicResistance: "1D8", speed: 51, reflexes: 6 },
+        tags: ["unlocked-potential"],
+        essences: ["Bat", "Balance", "Cage", "Vessel"],
         abilities: [
-          { id: "garran-rune-hammer", name: "Rune Hammer", category: "Arcana", description: "Stamp a rune into the ground and release a shockwave.", mana: 12, stamina: 8, cooldown: 1, tags: ["rune", "impact"], variants: [
-            { id: "thunder-brand", name: "Thunder brand", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, tags: ["thunder", "rune"] }
+          { id: "pat-flying-leap", name: "Flying Leap", category: "Bat", summary: "Powerful leap that can be combined with special attacks", description: "Swift and powerful leap with limited air control that can be combined with normal or special melee attacks, increasing all damage regardless of damage type by +1D8. Can be specially combined with Dive Bomb and another Special Attack for even more damage", mana: 0, stamina: 10, cooldown: 2, tags: ["Special Ability", "Combination", "Movement"], enhancements: [
+            { stat: "physicalAttack", bonus: "1D8" } ], statEffects: [
+            { id: "flying-leap-attack", stat: "physicalAttack", bonus: "1D8", duration: 1, target: "self" } ] },
+          { id: "pat-dive-bomb", name: "Dive Bomb", category: "Bat", summary: "Dive at an enemy from above to deal extra damage", description: "Accelerate down to attack from above; can be combined with normal or special melee attacks. Physical damage is increased by +1D8 and a resonating force shockwave is produced from the impact point to produce knockback but not damage. No falling damage is suffered from this ability, even if it misses. Can be specially combined with Flying Leap and another Special Attack for even more damage", mana: 0, stamina: 40, cooldown: 3, tags: ["Special Ability", "Movement", "Combination"], enhancements: [
+            { stat: "physicalAttack", bonus: "1D8" } ], statEffects: [
+            { id: "dive-bomb-attack", stat: "physicalAttack", bonus: "1D8", duration: 1, target: "self" } ] },
+          { id: "pat-leech-bite", name: "Leech Bite", category: "Bat", summary: "Inflicts [Bleeding] and [Leech Toxin]", description: "Special attack that can be combined with a melee strike to inflict or refresh [Bleeding] and [Leech Toxin]. Drains 1D8 of health and stamina when refreshing the bleeding condition", mana: 10, stamina: 10, cooldown: 0, tags: ["Special Attack", "Melee", "Drain", "Wounding", "Blood"] },
+          { id: "pat-sanguine-transformation", name: "Sanguine Transformation", category: "Bat", summary: "Transform your body to enhance your combat abilities.", description: "You grow a set of crimson bat wings and fangs, the wings allow you to fly, soar and glide at 1.5 times your normal movement speed and your fangs can bite people to siphon mana and stamina equal to 1D8 multiplied by 10.", mana: 18, stamina: 0, cooldown: 2, activeMode: "toggle", upkeep: { mana: 18 }, tags: ["Conjuration", "Movement", "Drain", "Active"] },
+          { id: "pat-vampire-intimidation", name: "Vampire\'s Intimidation", category: "Bat", summary: "Ignore rank disparity and see miridian movements.", description: "Enemies of a higher rank recognise your strength and you can ignore rank disparity. You are also able to see blood and mana flow through the body on bronze rank or lower creatures.", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Perception", "Blood", "passive"] },
+          { id: "pat-lifeforce-imbalance", name: "Lifeforce Imbalance", category: "Balance", summary: "Adjust your health and gain an affliction based on the change.", description: "Enter a signed health change. Losing health applies [Dark Descent] stacks equal to the percentage of your maximum health lost (rounded up); gaining health applies one [Impervious]. Use the Buffs page to track afflictions on other characters.", mana: 60, stamina: 0, cooldown: 999, tags: ["Special Ability", "Recovery", "Counter-Execute"], resourceEffects: [
+            { id: "lifeforce-health-change", resource: "health", amount: "XX", target: "self" }
+          ], afflictionEffects: [
+            { id: "lifeforce-dark-descent", afflictionId: "dark descent", target: "self", trigger: "resourceChange", resourceEffectId: "lifeforce-health-change", condition: "decrease", stacksFromPercentageOfMax: true },
+            { id: "lifeforce-impervious", afflictionId: "impervious", target: "self", trigger: "resourceChange", resourceEffectId: "lifeforce-health-change", condition: "increase", stacks: 1 }
           ] },
-          { id: "garran-stone-shell", name: "Stone Shell", category: "Arcana", description: "Layer your armor in a temporary coat of stone.", mana: 14, stamina: 4, cooldown: 2, tags: ["root", "defense"] },
-          { id: "garran-thunder-mark", name: "Thunder Mark", category: "Arcana", description: "Brand a foe with a rune that crackles with force.", mana: 18, stamina: 0, cooldown: 2, tags: ["thunder", "rune"] },
-          { id: "garran-iron-anchor", name: "Iron Anchor", category: "Arcana", description: "Root yourself in place against incoming force.", mana: 10, stamina: 10, cooldown: 2, tags: ["iron", "root"] },
-          { id: "garran-oathfire", name: "Oathfire", category: "Arcana", description: "Kindle a steady flame that strengthens an ally's resolve.", mana: 16, stamina: 6, cooldown: 3, tags: ["oath", "support"] },
-          { id: "garran-mountain-cleave", name: "Mountain Cleave", category: "Combat", description: "Bring a two-handed strike down with crushing weight.", mana: 0, stamina: 32, cooldown: 2, tags: ["impact", "melee"] },
-          { id: "garran-iron-wall", name: "Iron Wall", category: "Combat", description: "Set your shield and refuse to give ground.", mana: 4, stamina: 20, cooldown: 1, tags: ["iron", "defense"] },
-          { id: "garran-thunder-bash", name: "Thunder Bash", category: "Combat", description: "Crash into an opponent with a shield and a burst of thunder.", mana: 8, stamina: 25, cooldown: 2, tags: ["thunder", "impact"] },
-          { id: "garran-stonebreaker", name: "Stonebreaker", category: "Combat", description: "Target a weak point in armor with a deliberate blow.", mana: 5, stamina: 28, cooldown: 2, tags: ["melee", "armor"] },
-          { id: "garran-steadfast-guard", name: "Steadfast Guard", category: "Combat", description: "Protect a nearby ally by taking a guarded stance.", mana: 6, stamina: 18, cooldown: 2, tags: ["oath", "defense"] },
-          { id: "garran-burrow-charge", name: "Burrow Charge", category: "Technique", description: "Drive forward with a low, unstoppable rush.", mana: 0, stamina: 22, cooldown: 1, tags: ["movement", "root"] },
-          { id: "garran-counter-rune", name: "Counter Rune", category: "Technique", description: "Meet a strike with a rune-timed parry.", mana: 8, stamina: 14, cooldown: 1, tags: ["rune", "counter"] },
-          { id: "garran-grounding-step", name: "Grounding Step", category: "Technique", description: "Brace and reposition without losing your balance.", mana: 4, stamina: 12, cooldown: 0, tags: ["movement", "root"] },
-          { id: "garran-break-formation", name: "Break Formation", category: "Technique", description: "Force open a guarded line with a sudden shoulder check.", mana: 0, stamina: 26, cooldown: 2, tags: ["impact", "melee"] },
-          { id: "garran-stone-sense", name: "Stone Sense", category: "Technique", description: "A constant awareness of vibrations through the earth.", mana: 0, stamina: 0, cooldown: 0, tags: ["root", "focus", "passive"] },
-          { id: "garran-rallying-oath", name: "Rallying Oath", category: "Support", description: "Call your companions to hold fast together.", mana: 8, stamina: 12, cooldown: 2, tags: ["oath", "support"] },
-          { id: "garran-rune-mending", name: "Rune Mending", category: "Support", description: "Trace a restorative rune over an ally's armor.", mana: 18, stamina: 0, cooldown: 2, tags: ["rune", "healing"] },
-          { id: "garran-iron-vow", name: "Iron Vow", category: "Support", description: "Take an ally's burden and fortify your own resolve.", mana: 10, stamina: 15, cooldown: 3, tags: ["iron", "oath"] },
-          { id: "garran-earthward", name: "Earthward", category: "Support", description: "Raise a low earthen ridge to shelter nearby allies.", mana: 20, stamina: 8, cooldown: 3, tags: ["root", "defense"] },
-          { id: "garran-thunder-call", name: "Thunder Call", category: "Support", description: "Sound a resonant call that steadies the whole party.", mana: 14, stamina: 10, cooldown: 2, tags: ["thunder", "support"] }
+          { id: "pat-mana-tide", name: "Mana Tide", category: "Balance", summary: "Draw mana from the astral to replenish allies.", description: "All party members gain an accelerating mana-recovery bonus over 300 rounds, reaching +40 mana recovery per turn on round 300. While Mana Tide is active, each 10 mana an ally actually spends on abilities adds 1/6 mana recovery per turn to that ally; every 60 mana spent adds +1 recovery per turn.", mana: 60, stamina: 0, cooldown: 999, manaTide: { durationRounds: 300, maxRecovery: 40, manaPerRecovery: 60, growth: "quadratic" }, tags: ["Special Ability", "Recovery", "Counter-Execute"] },
+          { id: "pat-juxtapose", name: "Juxtapose", category: "Balance", summary: "Swap the location of two entities.", description: "Swap the location of two allies and/or enemies. You must be able to see both subjects. If an ally resists or prevents it, it is negated. Enemies affected by this ability take +10% from all sources for 1 turn.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
+          { id: "pat-instant-karma", name: "Instant Karma", category: "Balance", summary: "Target takes the damage it just dealt", description: "The target suffers damage of the same amount and type. This is considered retributive damage. Reducing or negating the original damage does not reduce or negate the retributive damage. (Only affects entities with a motive spirit).", mana: 10, stamina: 0, cooldown: 0, tags: ["Spell", "Retribution", "Holy"] },
+          { id: "pat-equillibrium", name: "Equilibrium", category: "Balance", summary: "Meditate to accrue instances of [Integrity] and [Resistant].", description: "Meditate to accrue 6 instances of [Integrity] and 12 instances of [Resistant] per turn up to a maximum of 20 Integrity and 40 Resistant.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Buff", "Recovery"], afflictionEffects: [
+            { id: "equilibrium-integrity", afflictionId: "integrity", target: "self", stacks: 6, duration: 1, maxStacksPerTurn: 6, maxTotalStacks: 20 },
+            { id: "equilibrium-resistant", afflictionId: "resistant", target: "self", stacks: 12, duration: null, maxStacksPerTurn: 12, maxTotalStacks: 40 }
+          ]},
+          { id: "pat-power-lock", name: "Power Lock", category: "Cage", summary: "When the target uses an ability, a second one goes on cooldown.", description: "When the target uses an ability, a random other ability goes on cooldown and uses mana, as if it has been used, if the ability had no mana cost, the target suffers disruptive-force damage commensurate with the strength of the ability. If the target has no other abilities, the ability it used has doubled cooldown, or if the ability has no cooldown, it becomes unavailable for a brief period.", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Curse", "Magic"] },
+          { id: "pat-verdant-cage", name: "Verdant Cage", category: "Cage", summary: "Grow vines to restrain a target.", description: "Grow vines to restrain a target. More effective in areas already containing pant life. Binding plants have damaging thorns that do 1D8 damage per turn.", mana: 0, stamina: 0, cooldown: 0, tags: ["Spell", "Conjuration", "Poison"] },
+          { id: "pat-lotus-redoubt", name: "Lotus Redoubt", category: "Cage", summary: "Creates a Lotus around you and your allies to recover resources.", description: "Creates a Lotus around you and your allies, where recovery of health, mana and stamina is increased. You are unable to do anything inside of the lotus and it has a health pool of 300. Lotus\'s wear off after 3 turns", mana: 20, stamina: 0, cooldown: 99, tags: ["Spell", "Recovery", "Elemental"], afflictionEffects: [
+            { id: "lotus-redoubt-recovery", afflictionId: "lotus redoubt", target: "self", stacks: 1, duration: 3, maxStacksPerTurn: 1, maxTotalStacks: 1, target: "party" }
+          ]},
+          { id: "pat-large-pockets", name: "Large Pockets", category: "Cage", summary: "You have a dimensional storage space accessible through your pockets", description: "You have a dimensional storage space accessible through your pockets. The entry can be stretched as big as you needbut anything with a motive spirit cannot enter", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Dimension", "passive"] },
+          { id: "pat-unlocked-potential", name: "Unlocked Potential", category: "Cage", summary: "Overcharge mana and stamina; negative resources prevent further ability use.", description: "You can push yourself further than you could before, spending mana or stamina below zero. While either resource is negative, you cannot activate any abilities until both return to zero or higher.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "passive"] },
+          { id: "pat-counterfeit-combatant", name: "Counterfeit Combatant", category: "Vessel", summary: "damage increases by 2d10s", description: "Grow to a large form(2x2) and gain temporary proficiency with armour and melee weapons. Your maximum stamina increases by 50, your damage is increased by 2d10s, your damage resistance is increased by 1D10 and gain an extra +6 to stamina recovery.", mana: 60, stamina: 0, cooldown: 3600, tags: ["Special Ability", "Shapeshift", "Buff"], statEffects: [
+            { id: "counterfeit-attack", stat: "physicalAttack", bonus: "2D10", duration: 10, target: "self" },
+            { id: "counterfeit-resistance", stat: "damageResistance", bonus: "1D10", duration: 10, target: "self" },
+            { id: "counterfeit-stamina", stat: "staminaRecovery", bonus: "+6", duration: 10, target: "self" } ], resourceEffects: [
+            { id: "counterfeit-stamina-max", resource: "stamina", amount: 50, target: "self" },
+          ] },
+          { id: "pat-projection", name: "Projection", category: "Vessel", summary: "Summon a small drone to project your senses into.", description: "Project your senses into a small flying drone that is normal rank and can move around. The drone cannot attack but your aura can be projected into it with little control.", mana: 10, stamina: 0, cooldown: 10, tags: ["Special Ability", "Conjuration"] },
+          { id: "pat-free-runner", name: "Free Runner", category: "Vessel", summary: "Increased speed, reflexes, balance and spatial sense.", description: "Increase your speed, reflexes, balance and spatial sense.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Movement", "passive"], enhancements: [
+            { stat: "speed", bonus: 6 },
+            { stat: "reflexes", bonus: 1 } ], statEffects: [
+            { id: "free-runner-speed", stat: "speed", bonus: 6, target: "self" },
+            { id: "free-runner-reflexes", stat: "reflexes", bonus: 1, target: "self" } ], variants: [
+            { id: "free-runner-balance", name: "wall/water run", description: "Low mana cost to run on walls or water. Momentum must be maintained on walls or water to prevent falling", mana: 6, stamina: 6, cooldown: 0, activeVersion: true, tags: ["Movement"] }]},
+          { id: "pat-avatar-of-speed", name: "Avatar of Speed", category: "Vessel", summary: "Enhances your Movement-tagged ability effects and reduces their costs.", description: "Your Movement-tagged ability effects gain the enhancement configured on each ability, and their mana and stamina costs are reduced by 5. Select the momentum action to enter spaces moved; gain one instance of [Momentum] per 10 spaces.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Movement", "Buff", "passive", "enhancement"], enhancement: { target: "self", targetTags: ["Movement"] }, costEffects: [
+            { id: "avatar-of-speed-costs", mana: 5, stamina: 5, target: "self", abilityTags: ["Movement"] }
+          ], variants: [
+            { id: "avatar-speed-momentum", name: "Gain Momentum", description: "Enter the number of spaces you moved. Gain one [Momentum] for every 10 spaces.", mana: 0, stamina: 0, cooldown: 0, activeVersion: true, inputFields: [
+              { id: "spacesMoved", label: "Spaces moved", min: 0 }
+            ], afflictionEffects: [
+              { id: "avatar-speed-momentum-stacks", afflictionId: "momentum", target: "self", stacksFromInput: { field: "spacesMoved", divisor: 10 }, duration: 1, maxStacksPerTurn: 999, maxTotalStacks: 999}
+            ] }
+          ] },
+          { id: "pat-projection", name: "Projection", category: "Vessel", summary: "Summon a small drone to project your senses into.", description: "Project your senses into a small flying drone that is normal rank and can move around. The drone cannot attack but your aura can be projected into it with little control.", mana: 10, stamina: 0, cooldown: 10, tags: ["Special Ability", "Conjuration"] }
         ],
         equipment: [],
         titles: [],
@@ -590,6 +654,11 @@
         name: "Bleeding",
         description: "takes 1D6 damage at the start of each turn, this condition absorbs healing, after which it expires."
       },
+      momentum: {
+        name: "Momentum",
+        description: "When making an attack, all instances are consumed to inflict +1 resonating force damage. Additional instances can be accumulated.",
+        statEffects: [{ stat: "physicalAttack", bonus: "+1", perStack: true }]
+      },
       "leech toxin": {
         name: "Leech Toxin",
         description: "When bleeding is negated, an instance of [leech toxin] is consumed to reapply bleeding. Additional instances can be accumulated."
@@ -604,7 +673,38 @@
       },
       ectoplasm: {
         name: "Ectoplasm",
-        description: "You become harder to perceive and will become completely invisible when stacks of this affliction >= their perception."
+        description: "You become harder to perceive and will become completely invisible when stacks of this affliction >= others perception."
+      },
+      "dark descent": {
+        name: "Dark Descent",
+        description: "The target's perception distance, the effect of their perception ability, and resistance to all afflictions are reduced slightly. Additional instances have a cumulative effect. When the target's perception < Dark Descent, they can't see and will strike out randomly"
+      },
+      impervious: {
+        name: "Impervious",
+        description: "Magic resistance is increased by 3D12 and affliction resistance is also increased. Additional instances have a cumulative effect.",
+        statEffects: [{ stat: "magicResistance", bonus: "3D12", perStack: true }]
+      },
+      integrity: {
+        name: "Integrity",
+        description: "At the end of each turn, recover 1 health, 10 mana, and 20 stamina per Integrity stack, up to each resource's maximum. Additional instances have a cumulative effect.",
+        resourceEffects: [
+          { resource: "health", amountPerStack: 1 },
+          { resource: "mana", amountPerStack: 10 },
+          { resource: "stamina", amountPerStack: 20 }
+        ]
+      },
+      resistant: {
+        name: "Resistant",
+        description: "Resistance to afflictions is increased. Additional instances have a cumulative effect. Resistant stacks are tracked here; automatic affliction resistance checks and [Vulnerability] cancellation are not implemented yet.",
+      },
+      "lotus redoubt": {
+        name: "Lotus Redoubt",
+        description: "At the end of each turn, recover 15 health, 25 mana and 50 stamina.",
+        resourceEffects: [
+          { resource: "health", amountPerStack: 15 },
+          { resource: "mana", amountPerStack: 25 },
+          { resource: "stamina", amountPerStack: 50 }
+        ]
       }
     };
     const STORAGE_KEY = "pallimustas-campaign-v1";
@@ -653,6 +753,90 @@
           : taggedTargets;
       }
       return [];
+    }
+
+    function scaledDiceFormula(formula, multiplier) {
+      const parsed = parseDiceFormula(formula);
+      if (!parsed) return null;
+      return formatDiceFormula({
+        dice: new Map([...parsed.dice].map(([sides, count]) => [sides, count * multiplier])),
+        flat: parsed.flat * multiplier
+      });
+    }
+
+    function applyAffliction(characterId, afflictionId, stacks, duration, source) {
+      if (!characterById(characterId) || !Object.hasOwn(AFFLICTION_GLOSSARY, afflictionId)) return;
+      if (!Number.isSafeInteger(stacks) || stacks <= 0) return;
+      state.afflictionSequence = (state.afflictionSequence || 0) + 1;
+      state.activeAfflictions.push({
+        id: `affliction-${state.afflictionSequence}`,
+        characterId,
+        afflictionId,
+        stacks,
+        remainingTurns: duration ?? null,
+        source: String(source || "Manually added").slice(0, 160)
+      });
+    }
+
+    function isValidAfflictionEffect(effect) {
+      const inputStackRule = effect?.stacksFromInput;
+      return Boolean(
+        effect &&
+        typeof effect.id === "string" && effect.id.trim() &&
+        Object.hasOwn(AFFLICTION_GLOSSARY, effect.afflictionId) &&
+        ["self", "others", "party", "tagged", "self-and-tagged"].includes(effect.target) &&
+        (!["tagged", "self-and-tagged"].includes(effect.target) ||
+          (Array.isArray(effect.tags) && effect.tags.length > 0 && effect.tags.every((tag) => typeof tag === "string" && tag.trim()))) &&
+        (effect.stacks === undefined || (Number.isSafeInteger(effect.stacks) && effect.stacks > 0)) &&
+        (inputStackRule === undefined || (
+          inputStackRule &&
+          typeof inputStackRule.field === "string" &&
+          inputStackRule.field.trim() &&
+          Number.isSafeInteger(inputStackRule.divisor) &&
+          inputStackRule.divisor > 0
+        )) &&
+        (effect.stacksFromPercentageOfMax === undefined || typeof effect.stacksFromPercentageOfMax === "boolean") &&
+        (effect.stacksFromPercentageOfMax !== true || effect.trigger === "resourceChange") &&
+        (effect.duration === undefined || effect.duration === null || (Number.isSafeInteger(effect.duration) && effect.duration > 0)) &&
+        (effect.maxStacksPerTurn === undefined || (Number.isSafeInteger(effect.maxStacksPerTurn) && effect.maxStacksPerTurn > 0)) &&
+        (effect.maxTotalStacks === undefined || (Number.isSafeInteger(effect.maxTotalStacks) && effect.maxTotalStacks > 0)) &&
+        (effect.trigger === undefined || effect.trigger === "onUse" || (
+          effect.trigger === "resourceChange" &&
+          typeof effect.resourceEffectId === "string" &&
+          ["increase", "decrease"].includes(effect.condition)
+        ))
+      );
+    }
+
+    function applyConfiguredAfflictionEffect(sourceCharacter, ability, effect, targetCharacterId, stackCount) {
+      const sourceProgress = state.characters[sourceCharacter.id];
+      sourceProgress.afflictionApplicationsThisTurn ??= {};
+      const countKey = `${ability.id}::${effect.id}::${targetCharacterId}`;
+      const alreadyApplied = sourceProgress.afflictionApplicationsThisTurn[countKey] || 0;
+      const source = `${sourceCharacter.name} · ${ability.name}`;
+      const existingStacks = state.activeAfflictions
+        .filter((entry) =>
+          entry.characterId === targetCharacterId &&
+          entry.afflictionId === effect.afflictionId &&
+          entry.source === source
+        )
+        .reduce((total, entry) => total + entry.stacks, 0);
+      const perTurnAllowance = effect.maxStacksPerTurn
+        ? Math.max(0, effect.maxStacksPerTurn - alreadyApplied)
+        : stackCount;
+      const totalAllowance = effect.maxTotalStacks
+        ? Math.max(0, effect.maxTotalStacks - existingStacks)
+        : stackCount;
+      const stacks = Math.min(stackCount, perTurnAllowance, totalAllowance);
+      if (stacks <= 0) return;
+      applyAffliction(
+        targetCharacterId,
+        effect.afflictionId,
+        stacks,
+        effect.duration,
+        source
+      );
+      sourceProgress.afflictionApplicationsThisTurn[countKey] = alreadyApplied + stacks;
     }
 
     function equipmentAttacks(item) {
@@ -757,6 +941,60 @@
       };
     }
 
+    function enhancedAbilityEffectBonus(character, ability, configuration, stat, bonus) {
+      const base = parseDiceFormula(bonus);
+      if (!base) return bonus;
+      const enhanced = { dice: new Map(base.dice), flat: base.flat };
+      const configuredEnhancements = configuration.enhancements || ability.enhancements || [];
+      if (!Array.isArray(configuredEnhancements)) {
+        console.error(`Invalid enhancements configured for ${ability.name}.`, configuredEnhancements);
+        return bonus;
+      }
+      const additions = configuredEnhancements
+        .filter((entry) => entry?.stat === stat)
+        .map((entry) => parseDiceFormula(entry.bonus));
+      if (additions.some((addition) => !addition)) {
+        console.error(`Invalid enhancement bonus configured for ${ability.name}.`, configuredEnhancements);
+        return bonus;
+      }
+      let isEnhanced = false;
+      for (const enhancerCharacter of CHARACTERS) {
+        for (const enhancer of allCharacterAbilities(enhancerCharacter)) {
+          for (const enhancerConfiguration of [enhancer, ...(enhancer.variants || [])]) {
+            const rule = enhancerConfiguration.enhancement;
+            if (
+              !enhancerConfiguration.tags?.includes("enhancement") ||
+              !isPassiveConfiguration(enhancerConfiguration)
+            ) continue;
+            const validRule = rule &&
+              ["self", "others", "party", "tagged", "self-and-tagged"].includes(rule.target) &&
+              Array.isArray(rule.targetTags) &&
+              rule.targetTags.length > 0 &&
+              rule.targetTags.every((tag) => typeof tag === "string" && tag.trim()) &&
+              (!["tagged", "self-and-tagged"].includes(rule.target) ||
+                (Array.isArray(rule.tags) && rule.tags.length > 0 && rule.tags.every((tag) => typeof tag === "string" && tag.trim())));
+            if (!validRule) {
+              console.error(`Invalid enhancement configuration for ${enhancer.name}.`, rule);
+              continue;
+            }
+            if (
+              !abilityHasAnyTag(ability, rule.targetTags, configuration) ||
+              !statEffectTargets(rule, enhancerCharacter).includes(character.id)
+            ) continue;
+            isEnhanced = true;
+          }
+        }
+      }
+      if (!isEnhanced) return bonus;
+      for (const addition of additions) {
+        for (const [sides, count] of addition.dice) {
+          enhanced.dice.set(sides, (enhanced.dice.get(sides) || 0) + count);
+        }
+        enhanced.flat += addition.flat;
+      }
+      return formatDiceFormula(enhanced);
+    }
+
     function equipmentAttackSummary(character, item, attack) {
       const result = equipmentAttackResult(character, item, attack);
       if (!result) return "Invalid damage formula";
@@ -765,7 +1003,7 @@
         : result.amount;
     }
 
-    function isValidStatEffect(effect, character) {
+    function isValidStatEffect(effect, character, isToggleable = false) {
       return Boolean(
         effect &&
         typeof effect.id === "string" &&
@@ -773,24 +1011,58 @@
         Object.hasOwn(character.stats, effect.stat) &&
         typeof effect.bonus === "string" &&
         effect.bonus.trim() &&
-        Number.isInteger(effect.duration) &&
-        effect.duration > 0 &&
+        (isToggleable
+          ? effect.duration === undefined || (Number.isInteger(effect.duration) && effect.duration > 0)
+          : Number.isInteger(effect.duration) && effect.duration > 0) &&
         ["self", "others", "party", "tagged", "self-and-tagged"].includes(effect.target) &&
         (!["tagged", "self-and-tagged"].includes(effect.target) ||
           (Array.isArray(effect.tags) && effect.tags.length > 0 && effect.tags.every((tag) => typeof tag === "string" && tag.trim())))
       );
     }
 
-    function getAbilityCostModifiers(character, resource) {
+    function isValidAbilityUpkeep(ability) {
+      return ability.upkeep === undefined || (
+        ability.upkeep &&
+        typeof ability.upkeep === "object" &&
+        !Array.isArray(ability.upkeep) &&
+        Object.entries(ability.upkeep).every(([resource, amount]) =>
+          ["mana", "stamina"].includes(resource) &&
+          Number.isSafeInteger(amount) &&
+          amount >= 0
+        )
+      );
+    }
+
+    function isValidManaTideConfiguration(configuration) {
+      return Boolean(
+        configuration &&
+        Number.isSafeInteger(configuration.durationRounds) &&
+        configuration.durationRounds > 1 &&
+        Number.isFinite(configuration.maxRecovery) &&
+        configuration.maxRecovery >= 0 &&
+        Number.isFinite(configuration.manaPerRecovery) &&
+        configuration.manaPerRecovery > 0 &&
+        configuration.growth === "quadratic"
+      );
+    }
+
+    function abilityHasAnyTag(ability, tags, configuration = null) {
+      const expectedTags = new Set((tags || []).filter((tag) => typeof tag === "string").map((tag) => tag.toLowerCase()));
+      return [...(ability.tags || []), ...(configuration?.tags || [])]
+        .some((tag) => typeof tag === "string" && expectedTags.has(tag.toLowerCase()));
+    }
+
+    function getAbilityCostModifiers(character, resource, targetAbility = null) {
       return CHARACTERS.flatMap((sourceCharacter) =>
         allCharacterAbilities(sourceCharacter).flatMap((ability) =>
           [ability, ...(ability.variants || [])].flatMap((configuration) => {
-            if (!configuration.tags?.includes("passive")) return [];
+            if (!isPassiveConfiguration(configuration)) return [];
             return (configuration.costEffects || [])
               .filter((effect) =>
                 Number.isSafeInteger(effect[resource]) &&
                 effect[resource] > 0 &&
-                statEffectTargets(effect, sourceCharacter).includes(character.id)
+                statEffectTargets(effect, sourceCharacter).includes(character.id) &&
+                (!effect.abilityTags || (targetAbility && abilityHasAnyTag(targetAbility, effect.abilityTags)))
               )
               .map((effect) => ({ amount: effect[resource], source: ability.name }));
           })
@@ -798,8 +1070,8 @@
       );
     }
 
-    function getEffectiveAbilityCost(character, resource, cost) {
-      const modifiers = getAbilityCostModifiers(character, resource);
+    function getEffectiveAbilityCost(character, resource, cost, ability = null) {
+      const modifiers = getAbilityCostModifiers(character, resource, ability);
       const reduction = modifiers.reduce((total, modifier) => total + modifier.amount, 0);
       if (typeof cost !== "number" || !Number.isFinite(cost)) {
         return { cost, reduction, sources: [...new Set(modifiers.map((modifier) => modifier.source))] };
@@ -809,6 +1081,123 @@
         reduction,
         sources: [...new Set(modifiers.map((modifier) => modifier.source))]
       };
+    }
+
+    function getEffectiveAbilityUpkeep(character, resource, cost, ability = null) {
+      const modifiers = getAbilityCostModifiers(character, resource, ability);
+      const reduction = modifiers.reduce((total, modifier) => total + modifier.amount / 10 * 6, 0);
+      return {
+        cost: Math.max(0, cost - reduction),
+        reduction,
+        sources: [...new Set(modifiers.map((modifier) => modifier.source))]
+      };
+    }
+
+    function manaTideAbility() {
+      for (const character of CHARACTERS) {
+        const ability = character.abilities.find((entry) => entry.manaTide);
+        if (ability) return { character, ability };
+      }
+      return null;
+    }
+
+    function manaTideRecoveryBonus(character) {
+      const configured = manaTideAbility()?.ability.manaTide;
+      if (!isValidManaTideConfiguration(configured) || !state.manaTide?.active) return 0;
+      const duration = configured.durationRounds;
+      const progress = Math.max(0, Math.min(duration - 1, state.manaTide.roundsElapsed));
+      // Completed party rounds drive a quadratic ramp from zero to the configured maximum.
+      const ramp = configured.maxRecovery * (progress / (duration - 1)) ** 2;
+      const spent = state.manaTide.spentByCharacter?.[character.id] || 0;
+      return ramp + spent / configured.manaPerRecovery;
+    }
+
+    function recordManaSpent(characterId, amount) {
+      if (!state.manaTide?.active || !Number.isFinite(amount) || amount <= 0) return;
+      state.manaTide.spentByCharacter ??= {};
+      const previous = state.manaTide.spentByCharacter[characterId] || 0;
+      state.manaTide.spentByCharacter[characterId] = Math.round((previous + amount) * 1e6) / 1e6;
+    }
+
+    function effectiveManaRecovery(character) {
+      const bonus = getStatModifiers(character, "manaRecovery").reduce((total, modifier) => {
+        const parsed = parseDiceFormula(modifier.bonus);
+        if (!parsed || parsed.dice.size) {
+          console.error(`Mana recovery modifier from ${modifier.source} must be a flat numeric value.`, modifier);
+          return total;
+        }
+        return total + parsed.flat;
+      }, 0);
+      return Math.max(0, character.stats.manaRecovery + bonus);
+    }
+
+    function hasUnlockedPotential(character) {
+      return Array.isArray(character.tags) && character.tags.includes("unlocked-potential");
+    }
+
+    function minimumResourceValue(character, resource) {
+      return hasUnlockedPotential(character) && ["mana", "stamina"].includes(resource)
+        ? -Number.MAX_SAFE_INTEGER
+        : 0;
+    }
+
+    function hasNegativeCastingResource(character) {
+      const resources = state.characters[character.id].resources;
+      return resources.mana < 0 || resources.stamina < 0;
+    }
+
+    function deactivateToggleAbilitiesForExhaustedCharacter(character) {
+      if (!hasUnlockedPotential(character) || !hasNegativeCastingResource(character)) return [];
+      const progress = state.characters[character.id];
+      const deactivated = [];
+      for (const ability of allCharacterAbilities(character)) {
+        for (const configuration of [ability, ...(ability.variants || [])]) {
+          if (configuration.activeMode !== "toggle") continue;
+          const stateKey = abilityStateKey(ability, configuration === ability ? null : configuration);
+          if (!progress.activeAbilities?.[stateKey]) continue;
+          progress.activeAbilities[stateKey] = false;
+          deactivated.push(ability.name);
+        }
+      }
+      return deactivated;
+    }
+
+    function canPayAbilityResources(character, costs, effects) {
+      if (hasUnlockedPotential(character) && hasNegativeCastingResource(character)) return false;
+      const projected = new Map(CHARACTERS.map((entry) => [
+        entry.id,
+        { mana: state.characters[entry.id].resources.mana, stamina: state.characters[entry.id].resources.stamina }
+      ]));
+      const affectedCharacterIds = new Set([character.id]);
+      const ownResources = projected.get(character.id);
+      for (const resource of ["mana", "stamina"]) {
+        if (!hasUnlockedPotential(character) && ownResources[resource] < costs[resource]) return false;
+        ownResources[resource] -= costs[resource];
+      }
+
+      for (const effect of effects) {
+        if (!["mana", "stamina"].includes(effect.resource)) continue;
+        for (const targetId of statEffectTargets(effect, character)) {
+          affectedCharacterIds.add(targetId);
+          const target = characterById(targetId);
+          const targetResources = projected.get(targetId);
+          targetResources[effect.resource] = Math.max(
+            minimumResourceValue(target, effect.resource),
+            Math.min(
+              target.resources[effect.resource],
+              targetResources[effect.resource] + effect.amount
+            )
+          );
+        }
+      }
+
+      return [...affectedCharacterIds].every((targetId) => {
+        const target = characterById(targetId);
+        return ["mana", "stamina"].every((resource) => {
+          const value = projected.get(target.id)[resource];
+          return value >= 0 || hasUnlockedPotential(target);
+        });
+      });
     }
 
     function getStatModifiers(character, stat, includeEquipment = true) {
@@ -824,7 +1213,7 @@
         const source = characterById(activeEffect.sourceCharacterId);
         const ability = allCharacterAbilities(source).find((entry) => entry.id === activeEffect.sourceAbilityId);
         return [{
-          bonus: String(effect.bonus),
+          bonus: String(activeEffect.bonus ?? effect.bonus),
           source: ability.name,
           detail: `${activeEffect.remainingTurns} turn${activeEffect.remainingTurns === 1 ? "" : "s"} remaining`
         }];
@@ -832,13 +1221,37 @@
       const passiveModifiers = CHARACTERS.flatMap((sourceCharacter) =>
         allCharacterAbilities(sourceCharacter).flatMap((ability) =>
           [ability, ...(ability.variants || [])].flatMap((configuration) => {
-            if (!configuration.tags?.includes("passive")) return [];
+            if (!isPassiveConfiguration(configuration)) return [];
             return (configuration.statEffects || [])
               .filter((effect) => effect.stat === stat && statEffectTargets(effect, sourceCharacter).includes(character.id))
-              .map((effect) => ({ bonus: String(effect.bonus), source: ability.name, detail: "Passive effect" }));
+              .map((effect) => ({
+                bonus: enhancedAbilityEffectBonus(sourceCharacter, ability, configuration, stat, effect.bonus),
+                source: ability.name,
+                detail: "Passive effect"
+              }));
           })
         )
       );
+      const activeToggleModifiers = CHARACTERS.flatMap((sourceCharacter) => {
+        const progress = state.characters[sourceCharacter.id];
+        return allCharacterAbilities(sourceCharacter).flatMap((ability) =>
+          [ability, ...(ability.variants || [])].flatMap((configuration) => {
+            const stateKey = abilityStateKey(ability, configuration === ability ? null : configuration);
+            if (configuration.activeMode !== "toggle" || !progress.activeAbilities?.[stateKey]) return [];
+            return (configuration.statEffects || [])
+              .filter((effect) => effect.stat === stat && statEffectTargets(effect, sourceCharacter).includes(character.id))
+              .map((effect) => ({
+                bonus: enhancedAbilityEffectBonus(sourceCharacter, ability, configuration, stat, effect.bonus),
+                source: ability.name,
+                detail: "Active"
+              }));
+          })
+        );
+      });
+      const tideBonus = stat === "manaRecovery" ? manaTideRecoveryBonus(character) : 0;
+      const manaTideModifiers = tideBonus > 0
+        ? [{ bonus: String(Number(tideBonus.toFixed(4))), source: "Mana Tide", detail: "Active" }]
+        : [];
       const equippedItemIds = new Set(state.characters[character.id].equippedEquipment || []);
       const equipmentModifiers = includeEquipment
         ? (character.equipment || [])
@@ -847,7 +1260,26 @@
             .filter((effect) => effect.stat === stat && typeof effect.bonus === "string")
             .map((effect) => ({ bonus: effect.bonus, source: item.name, detail: "Equipped" })))
         : [];
-      return [...activeModifiers, ...passiveModifiers, ...equipmentModifiers];
+      const afflictionModifiers = (state.activeAfflictions || [])
+        .filter((entry) => entry.characterId === character.id)
+        .flatMap((entry) => {
+          const affliction = AFFLICTION_GLOSSARY[entry.afflictionId];
+          return (affliction?.statEffects || []).flatMap((effect) => {
+            if (effect.stat !== stat || typeof effect.bonus !== "string") return [];
+            const bonus = effect.perStack === false ? effect.bonus : scaledDiceFormula(effect.bonus, entry.stacks);
+            if (!bonus) {
+              console.error(`Invalid stat effect on ${affliction.name}.`, effect);
+              return [];
+            }
+            const duration = entry.remainingTurns === null ? "Does not expire" : `${entry.remainingTurns} turns remaining`;
+            return [{
+              bonus,
+              source: affliction.name,
+              detail: `${entry.stacks} stack${entry.stacks === 1 ? "" : "s"} · ${duration}`
+            }];
+          });
+        });
+      return [...activeModifiers, ...passiveModifiers, ...activeToggleModifiers, ...manaTideModifiers, ...equipmentModifiers, ...afflictionModifiers];
     }
 
     function renderStatValue(character, stat) {
@@ -887,15 +1319,24 @@
         view: "overview",
         variantSelection: {},
         activeStatEffects: [],
+        activeAfflictions: [],
+        afflictionSequence: 0,
         equipmentAttackLog: [],
+        manaTide: { active: false, roundsElapsed: 0, spentByCharacter: {} },
         characters: Object.fromEntries(CHARACTERS.map((character) => [
           character.id,
           {
             resources: { ...character.resources },
             cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
             activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
+            activeAbilities: Object.fromEntries(allCharacterAbilities(character).flatMap((ability) =>
+              [ability, ...(ability.variants || [])]
+                .filter((configuration) => configuration.activeMode === "toggle")
+                .map((configuration) => [abilityStateKey(ability, configuration === ability ? null : configuration), false])
+            )),
             chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
             abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0])),
+            afflictionApplicationsThisTurn: {},
             equippedEquipment: []
           }
         ]))
@@ -913,7 +1354,8 @@
           for (const key of Object.keys(character.resources)) {
             if (Number.isFinite(savedCharacter.resources[key])) {
               initial.characters[character.id].resources[key] = Math.max(
-                0, Math.min(character.resources[key], savedCharacter.resources[key])
+                minimumResourceValue(character, key),
+                Math.min(character.resources[key], savedCharacter.resources[key])
               );
             }
           }
@@ -940,6 +1382,15 @@
             }
           }
         }
+        if (savedCharacter?.activeAbilities && typeof savedCharacter.activeAbilities === "object") {
+          for (const ability of allCharacterAbilities(character)) {
+            for (const configuration of [ability, ...(ability.variants || [])]) {
+              if (configuration.activeMode !== "toggle") continue;
+              const key = abilityStateKey(ability, configuration === ability ? null : configuration);
+              initial.characters[character.id].activeAbilities[key] = savedCharacter.activeAbilities[key] === true;
+            }
+          }
+        }
         if (savedCharacter?.chargeRecharges) {
           for (const ability of allCharacterAbilities(character)) {
             for (const configuration of [ability, ...(ability.variants || [])]) {
@@ -959,6 +1410,12 @@
               ? savedUseCount
               : savedCharacter.usedAbilities?.[ability.id] === true ? 1 : 0;
           }
+        }
+        if (savedCharacter?.afflictionApplicationsThisTurn && typeof savedCharacter.afflictionApplicationsThisTurn === "object") {
+          initial.characters[character.id].afflictionApplicationsThisTurn = Object.fromEntries(
+            Object.entries(savedCharacter.afflictionApplicationsThisTurn)
+              .filter(([key, count]) => typeof key === "string" && Number.isSafeInteger(count) && count > 0)
+          );
         }
       }
       if (Array.isArray(parsed.activeStatEffects)) {
@@ -996,6 +1453,57 @@
           });
         }
       }
+      if (Array.isArray(parsed.activeAfflictions)) {
+        initial.activeAfflictions = parsed.activeAfflictions.flatMap((entry) => {
+          if (
+            !entry || typeof entry !== "object" ||
+            !characterById(entry.characterId) ||
+            !Object.hasOwn(AFFLICTION_GLOSSARY, entry.afflictionId) ||
+            !Number.isSafeInteger(entry.stacks) || entry.stacks < 1 ||
+            !(entry.remainingTurns === null || (Number.isSafeInteger(entry.remainingTurns) && entry.remainingTurns > 0))
+          ) return [];
+          return [{
+            id: typeof entry.id === "string" && entry.id ? entry.id : `affliction-${initial.activeAfflictions.length + 1}`,
+            characterId: entry.characterId,
+            afflictionId: entry.afflictionId,
+            stacks: entry.stacks,
+            remainingTurns: entry.remainingTurns,
+            source: typeof entry.source === "string" ? entry.source.slice(0, 160) : "Unknown source"
+          }];
+        });
+      }
+      const highestAfflictionSequence = initial.activeAfflictions.reduce((highest, entry) => {
+        const match = /^affliction-(\d+)$/.exec(entry.id);
+        return match ? Math.max(highest, Number(match[1])) : highest;
+      }, 0);
+      initial.afflictionSequence = Math.max(
+        Number.isSafeInteger(parsed.afflictionSequence) && parsed.afflictionSequence >= 0 ? parsed.afflictionSequence : 0,
+        highestAfflictionSequence,
+        initial.activeAfflictions.length
+      );
+      const savedManaTide = parsed.manaTide;
+      const configuredManaTide = manaTideAbility();
+      if (
+        savedManaTide?.active === true &&
+        configuredManaTide &&
+        isValidManaTideConfiguration(configuredManaTide.ability.manaTide) &&
+        characterById(savedManaTide.sourceCharacterId) &&
+        Number.isInteger(savedManaTide.roundsElapsed) &&
+        savedManaTide.roundsElapsed >= 0 &&
+        savedManaTide.roundsElapsed < configuredManaTide.ability.manaTide.durationRounds
+      ) {
+        initial.manaTide = {
+          active: true,
+          sourceCharacterId: savedManaTide.sourceCharacterId,
+          roundsElapsed: savedManaTide.roundsElapsed,
+          spentByCharacter: Object.fromEntries(CHARACTERS.flatMap((character) => {
+            const spent = savedManaTide.spentByCharacter?.[character.id];
+            return Number.isFinite(spent) && spent >= 0 && spent < Number.MAX_SAFE_INTEGER
+              ? [[character.id, Math.round(spent * 1e6) / 1e6]]
+              : [];
+          }))
+        };
+      }
       if (Array.isArray(parsed.equipmentAttackLog)) {
         initial.equipmentAttackLog = parsed.equipmentAttackLog.flatMap((entry) => {
           const character = characterById(entry?.characterId);
@@ -1019,7 +1527,7 @@
       initial.turn = Number.isInteger(parsed.turn) && parsed.turn > 0 ? parsed.turn : 1;
       initial.turnIndex = Number.isInteger(parsed.turnIndex) ? Math.max(0, parsed.turnIndex) % CHARACTERS.length : 0;
       initial.selectedId = CHARACTERS.some((character) => character.id === parsed.selectedId) ? parsed.selectedId : CHARACTERS[0].id;
-      initial.view = parsed.view === "sheet" ? "sheet" : "overview";
+      initial.view = ["sheet", "buffs"].includes(parsed.view) ? parsed.view : "overview";
       if (parsed.variantSelection && typeof parsed.variantSelection === "object") {
         for (const character of CHARACTERS) {
           for (const ability of allCharacterAbilities(character)) {
@@ -1086,7 +1594,10 @@
         turn: state.turn,
         turnIndex: state.turnIndex,
         activeStatEffects: state.activeStatEffects,
+        activeAfflictions: state.activeAfflictions,
+        afflictionSequence: state.afflictionSequence,
         equipmentAttackLog: state.equipmentAttackLog,
+        manaTide: state.manaTide,
         characters: state.characters
       };
     }
@@ -1360,7 +1871,22 @@
     function selectedAbilityFor(character, ability) {
       const selectedId = state.variantSelection[character.id]?.[ability.id];
       const variant = (ability.variants || []).find((entry) => entry.id === selectedId);
-      return variant ? { ...ability, ...variant, tags: [...new Set([...(ability.tags || []), ...(variant.tags || [])])] } : ability;
+      if (!variant) return ability;
+      return {
+        ...ability,
+        ...variant,
+        ...(variant.activeVersion ? {
+          statEffects: variant.statEffects || [],
+          resourceEffects: variant.resourceEffects || [],
+          afflictionEffects: variant.afflictionEffects || [],
+          manaTide: variant.manaTide
+        } : {}),
+        tags: [...new Set([...(ability.tags || []), ...(variant.tags || [])])]
+      };
+    }
+
+    function isPassiveConfiguration(ability) {
+      return ability.tags?.includes("passive") && ability.activeVersion !== true;
     }
 
     function configurableAbilityFields(ability, isRacialGift) {
@@ -1368,6 +1894,7 @@
         ...(!isRacialGift && isConfigurableAbilityValue(ability.mana) ? ["mana"] : []),
         ...(!isRacialGift && isConfigurableAbilityValue(ability.stamina) ? ["stamina"] : []),
         ...(isConfigurableAbilityValue(ability.cooldown) ? ["cooldown"] : []),
+        ...(ability.inputFields || []).map((field) => `input:${field.id}`),
         ...(ability.resourceEffects || [])
           .filter((effect) => isConfigurableAbilityValue(effect.amount))
           .map((effect) => `resourceEffect:${effect.id}`)
@@ -1379,10 +1906,15 @@
     }
 
     function abilityCostLabel(field, ability) {
+      if (field.startsWith("input:")) {
+        const inputId = field.slice("input:".length);
+        return ability.inputFields?.find((input) => input.id === inputId)?.label || inputId;
+      }
       if (field.startsWith("resourceEffect:")) {
         const effectId = field.slice("resourceEffect:".length);
         const effect = (ability.resourceEffects || []).find((entry) => entry.id === effectId);
         const resource = effect?.resource;
+        if (resource === "health") return "Health change (negative loses HP)";
         const label = resource ? resource[0].toUpperCase() + resource.slice(1) : "Resource";
         return `${label} change (negative spends)`;
       }
@@ -1394,11 +1926,16 @@
       const selectedAbility = selectedAbilityFor(character, ability);
       const variantId = selectedAbility.id === ability.id ? null : selectedAbility.id;
       const stateKey = variantId ? `${ability.id}::${variantId}` : ability.id;
-      const passive = selectedAbility.tags.includes("passive");
+      const passive = isPassiveConfiguration(selectedAbility);
+      const isManaTide = Boolean(selectedAbility.manaTide);
+      const manaTideActive = isManaTide && state.manaTide?.active === true;
+      const toggleable = selectedAbility.activeMode === "toggle";
+      const toggleActive = toggleable && progress.activeAbilities?.[stateKey] === true;
+      const invalidUpkeep = toggleable && !isValidAbilityUpkeep(selectedAbility);
       const manaCost = isRacialGift ? 0 : selectedAbility.mana;
       const staminaCost = isRacialGift ? 0 : selectedAbility.stamina;
-      const manaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "mana", manaCost);
-      const staminaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "stamina", staminaCost);
+      const manaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "mana", manaCost, selectedAbility);
+      const staminaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "stamina", staminaCost, selectedAbility);
       const cooldown = progress.cooldowns[stateKey] || 0;
       const activeTurns = progress.activeTurns[stateKey] || 0;
       const chargeRecharges = progress.chargeRecharges?.[stateKey] || [];
@@ -1409,13 +1946,28 @@
         ? selectedAbility.usesPerTurn
         : 1;
       const usesThisTurn = progress.abilityUsesThisTurn?.[ability.id] || 0;
-      const enoughMana = isConfigurableAbilityValue(manaCost) || progress.resources.mana >= manaEffect.cost;
-      const enoughStamina = isConfigurableAbilityValue(staminaCost) || progress.resources.stamina >= staminaEffect.cost;
+      const resourceExhausted = hasUnlockedPotential(character) && hasNegativeCastingResource(character);
+      const configurableResourceEffects = (selectedAbility.resourceEffects || []).some((effect) =>
+        isConfigurableAbilityValue(effect.amount)
+      );
+      const resourceCostsConfigurable = isConfigurableAbilityValue(manaCost) ||
+        isConfigurableAbilityValue(staminaCost) ||
+        configurableResourceEffects;
+      const enoughResources = resourceCostsConfigurable || canPayAbilityResources(
+        character,
+        { mana: manaEffect.cost, stamina: staminaEffect.cost },
+        selectedAbility.resourceEffects || []
+      );
       const outOfCharges = hasCharges && availableCharges === 0;
       const nextChargeIn = outOfCharges ? Math.min(...chargeRecharges) : null;
       const turnUsesExhausted = usesThisTurn >= usesPerTurn;
-      const disabled = passive || turnUsesExhausted || cooldown > 0 || activeTurns > 0 || outOfCharges || !enoughMana || !enoughStamina;
-      const reason = passive ? "" : turnUsesExhausted ? "Uses for this turn spent" : activeTurns > 0 ? `Active for ${activeTurns} more turn${activeTurns === 1 ? "" : "s"}` : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : outOfCharges ? `Next use in ${nextChargeIn} turn${nextChargeIn === 1 ? "" : "s"}` : !enoughMana ? "Not enough mana" : !enoughStamina ? "Not enough stamina" : "";
+      const disabled = passive || invalidUpkeep || (!toggleActive && (
+        resourceExhausted || turnUsesExhausted || cooldown > 0 || activeTurns > 0 || outOfCharges || !enoughResources ||
+        (isManaTide && manaTideActive)
+      ));
+      const reason = isManaTide && manaTideActive
+        ? `Affects the party · round ${state.manaTide.roundsElapsed + 1}/${selectedAbility.manaTide.durationRounds}`
+        : invalidUpkeep ? "Invalid upkeep configuration" : passive || toggleActive ? "" : resourceExhausted ? "Too exhausted to cast: mana and stamina must be nonnegative" : turnUsesExhausted ? "Uses for this turn spent" : activeTurns > 0 ? `Active for ${activeTurns} more turn${activeTurns === 1 ? "" : "s"}` : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : outOfCharges ? `Next use in ${nextChargeIn} turn${nextChargeIn === 1 ? "" : "s"}` : !enoughResources ? "Not enough mana or stamina" : "";
       const manaTooltip = manaEffect.sources.length ? ` title="Reduced by ${escapeHtml(manaEffect.sources.join(", "))}"` : "";
       const staminaTooltip = staminaEffect.sources.length ? ` title="Reduced by ${escapeHtml(staminaEffect.sources.join(", "))}"` : "";
       const resourceEffectChips = (selectedAbility.resourceEffects || []).map((effect) => {
@@ -1423,11 +1975,25 @@
         const amount = isConfigurableAbilityValue(effect.amount) ? "set on use" : `+${effect.amount}`;
         return `<span class="cost-chip active-chip">${escapeHtml(resource)} ${escapeHtml(amount)}</span>`;
       }).join("");
+      const manaTideChip = isManaTide && manaTideActive
+        ? `<span class="cost-chip active-chip">◉ Active · Tide round ${state.manaTide.roundsElapsed + 1}/${selectedAbility.manaTide.durationRounds} · your recovery +${Number(manaTideRecoveryBonus(character).toFixed(2))}/turn</span>`
+        : "";
+      const upkeepChips = toggleable && isValidAbilityUpkeep(selectedAbility)
+        ? Object.entries(selectedAbility.upkeep || {}).filter(([, amount]) => amount > 0).map(([resource, amount]) => {
+          const effect = getEffectiveAbilityUpkeep(character, resource, amount, selectedAbility);
+          const label = resource[0].toUpperCase() + resource.slice(1);
+          const tooltip = effect.sources.length ? ` title="Upkeep reduction: ${escapeHtml(effect.sources.join(", "))}"` : "";
+          return `<span class="cost-chip active-chip"${tooltip}>◈ ${escapeHtml(String(effect.cost))} ${label}/turn${effect.reduction ? ` (was ${amount})` : ""}</span>`;
+        }).join("")
+        : invalidUpkeep ? '<span class="cost-chip cooldown">Invalid upkeep configuration</span>' : "";
       const costs = passive ? '<span class="cost-chip passive-chip">Passive</span>' : [
         isConfigurableAbilityValue(manaCost) ? `<span class="cost-chip"${manaTooltip}>◈ Mana: set on use${manaEffect.reduction ? ` (−${manaEffect.reduction})` : ""}</span>` : manaCost > 0 ? `<span class="cost-chip"${manaTooltip}>◈ ${manaEffect.cost} mana${manaEffect.reduction ? ` (was ${manaCost})` : ""}</span>` : "",
         isConfigurableAbilityValue(staminaCost) ? `<span class="cost-chip stamina"${staminaTooltip}>⌁ Stamina: set on use${staminaEffect.reduction ? ` (−${staminaEffect.reduction})` : ""}</span>` : staminaCost > 0 ? `<span class="cost-chip stamina"${staminaTooltip}>⌁ ${staminaEffect.cost} stamina${staminaEffect.reduction ? ` (was ${staminaCost})` : ""}</span>` : "",
         isConfigurableAbilityValue(selectedAbility.cooldown) ? '<span class="cost-chip cooldown">↻ Cooldown: set on use</span>' : selectedAbility.cooldown > 0 ? `<span class="cost-chip cooldown">↻ ${selectedAbility.cooldown} turn${selectedAbility.cooldown === 1 ? "" : "s"} CD</span>` : "",
         selectedAbility.duration > 0 ? `<span class="cost-chip active-chip">◉ ${selectedAbility.duration} turn${selectedAbility.duration === 1 ? "" : "s"} active</span>` : "",
+        toggleActive ? '<span class="cost-chip active-chip">◉ Active until turned off</span>' : "",
+        manaTideChip,
+        upkeepChips,
         hasCharges ? `<span class="cost-chip cooldown">↻ ${availableCharges}/${selectedAbility.charges} uses${chargeRecharges.length ? ` · next in ${Math.min(...chargeRecharges)} turn${Math.min(...chargeRecharges) === 1 ? "" : "s"}` : ""}</span>` : "",
         usesPerTurn > 1 ? `<span class="cost-chip cooldown">↻ ${usesPerTurn} uses per turn</span>` : "",
         resourceEffectChips
@@ -1437,15 +2003,20 @@
       const variants = ability.variants || [];
       const chosenVariantId = state.variantSelection[character.id]?.[ability.id] || "";
       const variantControl = variants.length ? `<label><span class="section-helper">Variant </span><select class="variant-select" data-variant-character="${escapeHtml(character.id)}" data-variant-ability="${escapeHtml(ability.id)}" aria-label="${escapeHtml(ability.name)} variant"><option value="">Standard</option>${variants.map((variant) => `<option value="${escapeHtml(variant.id)}" ${variant.id === chosenVariantId ? "selected" : ""}>${escapeHtml(variant.name)}</option>`).join("")}</select></label>` : "";
+      const abilityButton = toggleable
+        ? `<button class="button ${toggleActive || !disabled ? "primary" : ""}" data-toggle-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${toggleActive ? "Turn off" : "Activate"}</button>`
+        : isManaTide
+          ? `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${manaTideActive ? "Mana Tide active" : "Begin Mana Tide"}</button>`
+        : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${turnUsesExhausted ? "Uses spent this turn" : usesThisTurn > 0 ? `Use again (${usesThisTurn}/${usesPerTurn})` : activeTurns > 0 ? "Active" : cooldown > 0 ? "Cooling down" : isRacialGift ? "Use gift" : "Use ability"}</button>`;
       return `<div class="ability-row">
         <div>${variantControl}<div class="ability-name">${escapeHtml(ability.name)}</div>${renderAbilityDescription(selectedAbility)}<div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
-        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${turnUsesExhausted ? "Uses spent this turn" : usesThisTurn > 0 ? `Use again (${usesThisTurn}/${usesPerTurn})` : activeTurns > 0 ? "Active" : cooldown > 0 ? "Cooling down" : isRacialGift ? "Use gift" : "Use ability"}</button>${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
+        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `${abilityButton}${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
       </div>`;
     }
 
     function renderAbilities(character) {
       return `<section class="ability-section">
-        <div class="ability-heading"><div><div class="section-title">Abilities by essence</div><div class="section-helper" style="margin-top:5px">Abilities are limited to one use per owner turn unless configured for more. Values marked “set on use” are entered when activated. Click afflictions for their glossary entry.</div></div><div class="section-helper">${character.abilities.length} personal abilities</div></div>
+        <div class="ability-heading"><div><div class="section-title">Abilities by essence</div><div class="section-helper" style="margin-top:5px">Abilities are limited to one use per owner turn unless configured for more. Toggle abilities stay active until turned off; upkeep is charged at the end of each owner turn (6 seconds). Cost reductions apply normally on activation and at one-tenth strength per second to upkeep. Mana Tide recovery ramps for 300 party rounds; each 10 mana actually spent on an ability adds 1/6 recovery per turn for the spender. Values marked “set on use” are entered when activated. Click afflictions for their glossary entry.</div></div><div class="section-helper">${character.abilities.length} personal abilities</div></div>
         <div class="essence-ability-groups">${character.essences.map((essence) => {
           const abilities = character.abilities.filter((ability) => essenceForAbility(character, ability) === essence);
           return `<div class="ability-group">
@@ -1567,14 +2138,58 @@
         ${renderCharacterCollection(character, "inventory", "Inventory")}`;
     }
 
+    function renderBuffs() {
+      const characterOptions = CHARACTERS.map((character) =>
+        `<option value="${escapeHtml(character.id)}" ${character.id === state.selectedId ? "selected" : ""}>${escapeHtml(character.name)}</option>`
+      ).join("");
+      const afflictionOptions = Object.entries(AFFLICTION_GLOSSARY).map(([id, entry]) =>
+        `<option value="${escapeHtml(id)}">${escapeHtml(entry.name)}</option>`
+      ).join("");
+      const characterSections = CHARACTERS.map((character) => {
+        const entries = state.activeAfflictions.filter((entry) => entry.characterId === character.id);
+        const rows = entries.map((entry) => {
+          const affliction = AFFLICTION_GLOSSARY[entry.afflictionId];
+          const duration = entry.remainingTurns === null ? "No expiry" : `${entry.remainingTurns} turn${entry.remainingTurns === 1 ? "" : "s"} remaining`;
+          const source = entry.source ? ` · ${entry.source}` : "";
+          return `<div class="affliction-entry">
+            <div><div class="affliction-entry-name">${escapeHtml(affliction.name)} <span class="section-helper">×${entry.stacks}</span></div><div class="affliction-entry-detail">${escapeHtml(affliction.description)}<br>${escapeHtml(duration + source)}</div></div>
+            <div class="affliction-entry-actions"><button class="mini-button" data-affliction-remove="${escapeHtml(entry.id)}" aria-label="Remove one ${escapeHtml(affliction.name)} stack from ${escapeHtml(character.name)}">−</button><span class="affliction-count">${entry.stacks} stack${entry.stacks === 1 ? "" : "s"}</span><button class="button subtle" data-affliction-clear="${escapeHtml(entry.id)}">Remove</button></div>
+          </div>`;
+        }).join("");
+        return `<section class="affliction-player">
+          <div class="affliction-player-head">${avatarStyle(character)}<div class="section-title">${escapeHtml(character.name)}</div><span class="section-helper">${entries.reduce((total, entry) => total + entry.stacks, 0)} active stacks</span></div>
+          ${rows || '<div class="empty-note">No active buffs or afflictions.</div>'}
+        </section>`;
+      }).join("");
+      return `<div class="page-head"><div><div class="eyebrow">Campaign effects</div><h1>Buffs &amp; Afflictions</h1><p class="subtitle">Track effects for the whole party. Durations decrease at the end of each affected character’s turn; entries without a duration remain until removed.</p></div></div>
+        <section class="ability-section">
+          <div class="ability-heading"><div><div class="section-title">Apply an affliction</div><div class="section-helper" style="margin-top:5px">Add or remove stacks for any player. Leave duration blank for a permanent effect.</div></div></div>
+          <form class="affliction-form" data-add-affliction>
+            <label>Character<select name="characterId">${characterOptions}</select></label>
+            <label>Buff or affliction<select name="afflictionId">${afflictionOptions}</select></label>
+            <label>Stacks<input type="number" name="stacks" min="1" max="999" step="1" value="1" required></label>
+            <label>Duration (turns)<input type="number" name="duration" min="1" max="999" step="1" placeholder="No expiry"></label>
+            <button class="button primary" type="submit">Apply</button>
+          </form>
+        </section>
+        <section class="ability-section">
+          <div class="ability-heading"><div><div class="section-title">Party effects</div><div class="section-helper" style="margin-top:5px">Stat effects configured on afflictions are reflected on character sheets and the DM overview.</div></div></div>
+          ${characterSections}
+        </section>`;
+    }
+
     // Re-render all surfaces together so the roster, dashboard, sheet, and turn badge stay in sync.
     function render() {
       document.getElementById("top-turn").textContent = `Round ${state.turn}`;
-      document.getElementById("breadcrumb-current").textContent = state.view === "overview" ? "DM Overview" : "Character Sheet";
+      document.getElementById("breadcrumb-current").textContent = ({ overview: "DM Overview", sheet: "Character Sheet", buffs: "Buffs & Afflictions" })[state.view];
       document.querySelectorAll("[data-view]").forEach((button) => {
         button.classList.toggle("active", button.dataset.view === state.view);
       });
-      document.getElementById("app").innerHTML = state.view === "overview" ? renderOverview() : renderSheet();
+      document.getElementById("app").innerHTML = ({
+        overview: renderOverview,
+        sheet: renderSheet,
+        buffs: renderBuffs
+      })[state.view]();
       renderRoster();
     }
 
@@ -1608,15 +2223,20 @@
     }
 
     function showAbilityCostForm(abilityId, abilityName, fields, ability) {
-      const inputs = fields.map((field) => `<label class="ability-cost-input">
-        <span>${escapeHtml(abilityCostLabel(field, ability))}</span>
-        <input type="number" name="${field}" ${field.startsWith("resourceEffect:") ? "" : 'min="0"'} step="1" inputmode="numeric" required>
-      </label>`).join("");
+      const inputs = fields.map((field) => {
+        const inputId = field.startsWith("input:") ? field.slice("input:".length) : null;
+        const inputConfig = ability.inputFields?.find((entry) => entry.id === inputId);
+        const minimum = inputConfig?.min ?? (field.startsWith("resourceEffect:") ? "" : 0);
+        return `<label class="ability-cost-input">
+          <span>${escapeHtml(abilityCostLabel(field, ability))}</span>
+          <input type="number" name="${field}" ${minimum === "" ? "" : `min="${escapeHtml(String(minimum))}"`} step="1" inputmode="numeric" required>
+        </label>`;
+      }).join("");
       const root = document.getElementById("modal-root");
       root.innerHTML = `<div class="modal-backdrop" data-dismiss-modal>
         <section class="modal" role="dialog" aria-modal="true" aria-labelledby="ability-cost-title">
           <h2 id="ability-cost-title">${escapeHtml(abilityName)} · Set values</h2>
-          <p>Enter the values for this use. Active cost-reduction effects are applied before resources are spent.</p>
+          <p>Enter the requested values for this use. Active cost-reduction effects are applied before resources are spent.</p>
           <form data-configurable-ability="${escapeHtml(abilityId)}">
             <div class="ability-cost-inputs">${inputs}</div>
             <div class="modal-actions"><button class="button" type="button" data-action="cancel-ability-costs">Cancel</button><button class="button primary" type="submit">Use ability</button></div>
@@ -1631,11 +2251,27 @@
       const configuredAbility = allCharacterAbilities(character).find((entry) => entry.id === abilityId);
       if (!configuredAbility) return;
       const ability = selectedAbilityFor(character, configuredAbility);
-      if (ability.tags.includes("passive")) return;
-      const invalidEffect = (ability.statEffects || []).find((effect) => !isValidStatEffect(effect, character));
+      if (isPassiveConfiguration(ability)) return;
+      if (hasUnlockedPotential(character) && hasNegativeCastingResource(character)) {
+        notify("Too exhausted to cast: mana and stamina must be nonnegative.");
+        return false;
+      }
+      if (ability.manaTide && state.manaTide?.active) return;
+      if (ability.manaTide && !isValidManaTideConfiguration(ability.manaTide)) {
+        console.error(`Invalid Mana Tide configuration for ${character.name}.`, ability.manaTide);
+        notify("Mana Tide has an invalid configuration. Check the code.");
+        return;
+      }
+      const toggleable = ability.activeMode === "toggle";
+      const invalidEffect = (ability.statEffects || []).find((effect) => !isValidStatEffect(effect, character, toggleable));
       if (invalidEffect) {
         console.error(`Invalid stat effect configured for ${character.name}'s ${ability.name}.`, invalidEffect);
         notify(`${ability.name} has an invalid stat effect configuration. Check the code.`);
+        return;
+      }
+      if (toggleable && !isValidAbilityUpkeep(ability)) {
+        console.error(`Invalid upkeep configured for ${character.name}'s ${ability.name}.`, ability.upkeep);
+        notify(`${ability.name} has an invalid upkeep configuration. Check the code.`);
         return;
       }
       const resourceEffects = ability.resourceEffects || [];
@@ -1655,8 +2291,19 @@
         notify(`${ability.name} has an invalid resource effect configuration. Check the code.`);
         return;
       }
+      const invalidAfflictionEffect = (ability.afflictionEffects || []).find((effect) =>
+        !isValidAfflictionEffect(effect) ||
+        (effect.stacksFromInput && !(ability.inputFields || []).some((field) => field.id === effect.stacksFromInput.field)) ||
+        (effect.trigger === "resourceChange" && !resourceEffects.some((resourceEffect) => resourceEffect.id === effect.resourceEffectId))
+      );
+      if (invalidAfflictionEffect) {
+        console.error(`Invalid affliction effect configured for ${character.name}'s ${ability.name}.`, invalidAfflictionEffect);
+        notify(`${ability.name} has an invalid affliction effect configuration. Check the code.`);
+        return;
+      }
       const isRacialGift = (character.racialGifts || []).some((gift) => gift.id === abilityId);
       const stateKey = abilityStateKey(configuredAbility, ability.id === configuredAbility.id ? null : ability);
+      if (toggleable && progress.activeAbilities?.[stateKey]) return;
       const chargeRecharges = progress.chargeRecharges?.[stateKey] || [];
       const hasCharges = Number.isInteger(ability.charges) && ability.charges > 0 &&
         Number.isInteger(ability.recharge) && ability.recharge > 0;
@@ -1676,6 +2323,21 @@
         showAbilityCostForm(abilityId, ability.name, configurableFields, ability);
         return false;
       }
+      const invalidInput = (ability.inputFields || []).find((field) =>
+        !field ||
+        typeof field.id !== "string" ||
+        !field.id.trim() ||
+        typeof field.label !== "string" ||
+        !field.label.trim() ||
+        (field.min !== undefined && !Number.isSafeInteger(field.min)) ||
+        !Number.isSafeInteger(suppliedValues[`input:${field.id}`]) ||
+        suppliedValues[`input:${field.id}`] < (field.min ?? 0)
+      );
+      if (invalidInput) {
+        console.error(`Invalid input field value configured for ${character.name}'s ${ability.name}.`, invalidInput);
+        notify("Enter valid whole-number values for this ability.");
+        return false;
+      }
       const resolvedResourceEffects = resourceEffects.map((effect) => ({
         ...effect,
         amount: isConfigurableAbilityValue(effect.amount)
@@ -1691,44 +2353,103 @@
         stamina: isRacialGift ? 0 : isConfigurableAbilityValue(staminaCost) ? suppliedValues.stamina : staminaCost ?? 0
       };
       const resolvedValues = {
-        mana: getEffectiveAbilityCost(character, "mana", baseCosts.mana).cost,
-        stamina: getEffectiveAbilityCost(character, "stamina", baseCosts.stamina).cost,
+        mana: getEffectiveAbilityCost(character, "mana", baseCosts.mana, ability).cost,
+        stamina: getEffectiveAbilityCost(character, "stamina", baseCosts.stamina, ability).cost,
         cooldown: isConfigurableAbilityValue(ability.cooldown) ? suppliedValues.cooldown : ability.cooldown ?? 0
       };
       if (Object.values(resolvedValues).some((value) => !Number.isSafeInteger(value) || value < 0)) {
         notify("Mana, stamina, and cooldown values must be whole numbers of zero or more.");
         return false;
       }
-      if (progress.resources.mana < resolvedValues.mana || progress.resources.stamina < resolvedValues.stamina) {
+      if (!canPayAbilityResources(character, resolvedValues, resolvedResourceEffects)) {
         notify("Not enough mana or stamina for those configured costs.");
         return false;
       }
 
       progress.resources.mana -= resolvedValues.mana;
       progress.resources.stamina -= resolvedValues.stamina;
+      recordManaSpent(character.id, resolvedValues.mana);
       if (hasCharges) {
         progress.chargeRecharges ??= {};
         progress.chargeRecharges[stateKey] ??= [];
         progress.chargeRecharges[stateKey].push(ability.recharge);
       }
+      const resourceChanges = [];
       for (const effect of resolvedResourceEffects) {
         for (const targetCharacterId of statEffectTargets(effect, character)) {
           const targetCharacter = characterById(targetCharacterId);
           const targetResources = state.characters[targetCharacterId].resources;
+          const previousAmount = targetResources[effect.resource];
           targetResources[effect.resource] = Math.max(
-            0,
+            minimumResourceValue(targetCharacter, effect.resource),
             Math.min(
               targetCharacter.resources[effect.resource],
-              targetResources[effect.resource] + effect.amount
+              previousAmount + effect.amount
             )
           );
+          const actualChange = targetResources[effect.resource] - previousAmount;
+          resourceChanges.push({
+            resourceEffectId: effect.id,
+            resource: effect.resource,
+            targetCharacterId,
+            amount: actualChange
+          });
+          if (effect.resource === "mana" && targetResources.mana < previousAmount) {
+            recordManaSpent(targetCharacterId, previousAmount - targetResources.mana);
+          }
         }
+      }
+      for (const effect of ability.afflictionEffects || []) {
+        const matchingChanges = effect.trigger === "resourceChange"
+          ? resourceChanges.filter((change) =>
+            change.resourceEffectId === effect.resourceEffectId &&
+            (effect.condition === "increase" ? change.amount > 0 : change.amount < 0)
+          )
+          : [null];
+        for (const change of matchingChanges) {
+          let stacks = effect.stacks || 1;
+          if (effect.stacksFromInput) {
+            stacks = Math.floor(
+              suppliedValues[`input:${effect.stacksFromInput.field}`] / effect.stacksFromInput.divisor
+            );
+          }
+          if (change && effect.stacksFromPercentageOfMax) {
+            const maximum = characterById(change.targetCharacterId).resources[change.resource];
+            stacks = Math.max(1, Math.ceil(Math.abs(change.amount) / maximum * 100));
+          }
+          if (!Number.isSafeInteger(stacks) || stacks <= 0) continue;
+          for (const targetCharacterId of statEffectTargets(effect, character)) {
+            applyConfiguredAfflictionEffect(
+              character,
+              ability,
+              effect,
+              targetCharacterId,
+              stacks
+            );
+          }
+        }
+      }
+      if (ability.manaTide) {
+        state.manaTide = {
+          active: true,
+          sourceCharacterId: character.id,
+          roundsElapsed: 0,
+          spentByCharacter: {}
+        };
       }
       progress.abilityUsesThisTurn ??= {};
       progress.abilityUsesThisTurn[abilityId] = (progress.abilityUsesThisTurn[abilityId] || 0) + 1;
       progress.cooldowns[stateKey] = resolvedValues.cooldown;
       progress.activeTurns[stateKey] = Math.max(0, ability.duration || 0);
-      for (const effect of ability.statEffects || []) {
+      if (toggleable) {
+        progress.activeAbilities ??= {};
+        progress.activeAbilities[stateKey] = true;
+      }
+      const affectedCharacterIds = new Set([character.id, ...resourceChanges.map((change) => change.targetCharacterId)]);
+      const deactivatedAbilities = [...new Set([...affectedCharacterIds].flatMap((characterId) =>
+        deactivateToggleAbilitiesForExhaustedCharacter(characterById(characterId))
+      ))];
+      for (const effect of toggleable ? [] : ability.statEffects || []) {
         for (const targetCharacterId of statEffectTargets(effect, character)) {
           state.activeStatEffects.push({
             id: `${state.turn}:${character.id}:${ability.id}:${effect.id}:${targetCharacterId}`,
@@ -1736,6 +2457,7 @@
             sourceAbilityId: configuredAbility.id,
             sourceConfigurationId: ability.id,
             effectId: effect.id,
+            bonus: enhancedAbilityEffectBonus(character, configuredAbility, ability, effect.stat, effect.bonus),
             targetCharacterId,
             remainingTurns: effect.duration
           });
@@ -1743,8 +2465,26 @@
       }
       saveCampaign();
       render();
-      notify(`${ability.name} used${ability.duration ? ` for ${ability.duration} turns` : ""} — ${character.name}'s resources updated.`);
+      notify(`${ability.name} ${toggleable ? "activated" : "used"}${ability.duration && !toggleable ? ` for ${ability.duration} turns` : ""} — ${character.name}'s resources updated.${deactivatedAbilities.length ? ` Active abilities turned off: ${deactivatedAbilities.join(", ")}.` : ""}`);
       return true;
+    }
+
+    function toggleAbility(abilityId) {
+      const character = getSelectedCharacter();
+      const configuredAbility = allCharacterAbilities(character).find((entry) => entry.id === abilityId);
+      if (!configuredAbility) return;
+      const ability = selectedAbilityFor(character, configuredAbility);
+      if (ability.activeMode !== "toggle") return;
+      const stateKey = abilityStateKey(configuredAbility, ability.id === configuredAbility.id ? null : ability);
+      const progress = state.characters[character.id];
+      if (!progress.activeAbilities?.[stateKey]) {
+        useAbility(abilityId);
+        return;
+      }
+      progress.activeAbilities[stateKey] = false;
+      saveCampaign();
+      render();
+      notify(`${ability.name} turned off.`);
     }
 
     function toggleEquipment(itemId) {
@@ -1760,6 +2500,54 @@
       saveCampaign();
       render();
       notify(`${item.name} ${isEquipped ? "unequipped" : "equipped"}.`);
+    }
+
+    function addManualAffliction(characterId, afflictionId, stacks, duration) {
+      if (!characterById(characterId) || !Object.hasOwn(AFFLICTION_GLOSSARY, afflictionId) ||
+        !Number.isSafeInteger(stacks) || stacks < 1 || stacks > 999 ||
+        !(duration === null || (Number.isSafeInteger(duration) && duration > 0 && duration <= 999))) {
+        notify("Choose a character, affliction, positive stack count, and valid duration.");
+        return;
+      }
+      applyAffliction(characterId, afflictionId, stacks, duration, "Manually added");
+      saveCampaign();
+      render();
+      notify(`${AFFLICTION_GLOSSARY[afflictionId].name} applied to ${characterById(characterId).name}.`);
+    }
+
+    function removeAffliction(afflictionId, removeAll = false) {
+      const entry = state.activeAfflictions.find((activeEntry) => activeEntry.id === afflictionId);
+      if (!entry) return;
+      if (removeAll || entry.stacks <= 1) {
+        state.activeAfflictions = state.activeAfflictions.filter((activeEntry) => activeEntry.id !== afflictionId);
+      } else {
+        entry.stacks -= 1;
+      }
+      saveCampaign();
+      render();
+    }
+
+    function recoverFromAfflictions(character) {
+      const progress = state.characters[character.id];
+      for (const entry of state.activeAfflictions.filter((activeEntry) => activeEntry.characterId === character.id)) {
+        const affliction = AFFLICTION_GLOSSARY[entry.afflictionId];
+        for (const effect of affliction.resourceEffects || []) {
+          if (
+            !effect ||
+            !["health", "mana", "stamina"].includes(effect.resource) ||
+            !Number.isSafeInteger(effect.amountPerStack) ||
+            effect.amountPerStack < 0
+          ) {
+            console.error(`Invalid resource effect configured for ${affliction.name}.`, effect);
+            continue;
+          }
+          const amount = effect.amountPerStack * entry.stacks;
+          progress.resources[effect.resource] = Math.min(
+            character.resources[effect.resource],
+            progress.resources[effect.resource] + amount
+          );
+        }
+      }
     }
 
     function attackWithEquipment(itemId, attackId) {
@@ -1792,13 +2580,49 @@
     function endTurn() {
       const character = getCurrentCharacter();
       const progress = state.characters[character.id];
+      let manaTideEnded = false;
       // Recovery is capped at each character's configured maximum; no resource can overflow.
-      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + character.stats.manaRecovery);
+      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + effectiveManaRecovery(character));
       progress.resources.stamina = Math.min(character.resources.stamina, progress.resources.stamina + character.stats.staminaRecovery);
+      recoverFromAfflictions(character);
+      const deactivatedAbilities = [];
+      for (const ability of allCharacterAbilities(character)) {
+        for (const configuration of [ability, ...(ability.variants || [])]) {
+          if (configuration.activeMode !== "toggle") continue;
+          const stateKey = abilityStateKey(ability, configuration === ability ? null : configuration);
+          if (!progress.activeAbilities?.[stateKey]) continue;
+          if (!isValidAbilityUpkeep(configuration)) {
+            console.error(`Invalid upkeep configured for ${character.name}'s ${ability.name}.`, configuration.upkeep);
+            progress.activeAbilities[stateKey] = false;
+            deactivatedAbilities.push(`${ability.name} (invalid upkeep)`);
+            continue;
+          }
+          const upkeepCosts = Object.entries(configuration.upkeep || {})
+            .filter(([, amount]) => amount > 0)
+            .map(([resource, amount]) => ({
+              resource,
+              ...getEffectiveAbilityUpkeep(character, resource, amount, {
+                ...ability,
+                ...configuration,
+                tags: [...new Set([...(ability.tags || []), ...(configuration.tags || [])])]
+              })
+            }));
+          const unaffordable = upkeepCosts.find((cost) => progress.resources[cost.resource] < cost.cost);
+          if (unaffordable) {
+            progress.activeAbilities[stateKey] = false;
+            deactivatedAbilities.push(`${ability.name} (not enough ${unaffordable.resource})`);
+            continue;
+          }
+          for (const cost of upkeepCosts) {
+            progress.resources[cost.resource] -= cost.cost;
+            if (cost.resource === "mana") recordManaSpent(character.id, cost.cost);
+          }
+        }
+      }
       for (const ability of allCharacterAbilities(character)) {
         const configurations = [ability, ...(ability.variants || [])];
         for (const configuration of configurations) {
-          if (configuration.tags?.includes("passive")) continue;
+          if (isPassiveConfiguration(configuration)) continue;
           const stateKey = abilityStateKey(ability, configuration === ability ? null : configuration);
           if (progress.chargeRecharges?.[stateKey]?.length) {
             progress.chargeRecharges[stateKey] = progress.chargeRecharges[stateKey]
@@ -1815,40 +2639,67 @@
       progress.abilityUsesThisTurn = Object.fromEntries(
         allCharacterAbilities(character).map((ability) => [ability.id, 0])
       );
+      progress.afflictionApplicationsThisTurn = {};
       state.activeStatEffects = state.activeStatEffects.flatMap((effect) => {
         if (effect.targetCharacterId !== character.id) return [effect];
         return effect.remainingTurns > 1
           ? [{ ...effect, remainingTurns: effect.remainingTurns - 1 }]
           : [];
       });
+      state.activeAfflictions = state.activeAfflictions.flatMap((entry) => {
+        if (entry.characterId !== character.id || entry.remainingTurns === null) return [entry];
+        return entry.remainingTurns > 1
+          ? [{ ...entry, remainingTurns: entry.remainingTurns - 1 }]
+          : [];
+      });
       state.turnIndex = (state.turnIndex + 1) % CHARACTERS.length;
       // Round counter advances only when turn order wraps back to the first character.
-      if (state.turnIndex === 0) state.turn += 1;
+      if (state.turnIndex === 0) {
+        state.turn += 1;
+        if (state.manaTide?.active) {
+          const configured = manaTideAbility()?.ability.manaTide;
+          if (!isValidManaTideConfiguration(configured) || state.manaTide.roundsElapsed + 1 >= configured.durationRounds) {
+            state.manaTide.active = false;
+            manaTideEnded = true;
+          } else {
+            state.manaTide.roundsElapsed += 1;
+          }
+        }
+      }
       saveCampaign();
       render();
-      notify(`${character.name}'s turn ended. Resources recovered and cooldowns reduced.`);
+      notify(`${character.name}'s turn ended. Resources recovered and cooldowns reduced.${deactivatedAbilities.length ? ` Turned off: ${deactivatedAbilities.join(", ")}.` : ""}${manaTideEnded ? " Mana Tide has ended." : ""}`);
     }
 
     function resetCampaign() {
-      // Restore initial character resources, clear cooldowns, and return turn order to its start.
+      // Restore initial resources and clear turn, ability, and Mana Tide progress.
       for (const character of CHARACTERS) {
         state.characters[character.id] = {
           resources: { ...character.resources },
           cooldowns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
           activeTurns: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, 0])),
+          activeAbilities: Object.fromEntries(allCharacterAbilities(character).flatMap((ability) =>
+            [ability, ...(ability.variants || [])]
+              .filter((configuration) => configuration.activeMode === "toggle")
+              .map((configuration) => [abilityStateKey(ability, configuration === ability ? null : configuration), false])
+          )),
           chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
           abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0])),
+          afflictionApplicationsThisTurn: {},
           equippedEquipment: [...(state.characters[character.id].equippedEquipment || [])]
         };
       }
       state.activeStatEffects = [];
+      state.activeAfflictions = [];
+      state.afflictionSequence = 0;
       state.equipmentAttackLog = [];
+      state.manaTide = { active: false, roundsElapsed: 0, spentByCharacter: {} };
       state.variantSelection = {};
       state.turn = 1;
       state.turnIndex = 0;
       saveCampaign();
       render();
-      notify("Session reset. Resources, ability uses, stat effects, and turn order are back at their defaults.");
+      notify("Session reset. Resources, ability uses, active abilities, stat effects, afflictions, Mana Tide, and turn order are back at their defaults.");
     }
 
     function showResetConfirmation() {
@@ -1856,7 +2707,7 @@
       root.innerHTML = `<div class="modal-backdrop" data-dismiss-modal>
         <section class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title">
           <h2 id="reset-title">Reset this session?</h2>
-          <p>All players’ resources, ability uses, cooldowns, and active stat effects will return to their starting values. The turn counter will also reset. This cannot be undone.</p>
+          <p>All players’ resources, ability uses, cooldowns, toggle abilities, active stat effects, buffs, afflictions, and Mana Tide progress will return to their starting values. The turn counter will also reset. This cannot be undone.</p>
           <div class="modal-actions"><button class="button" data-action="cancel-reset">Keep playing</button><button class="button primary" data-action="reset">Reset session</button></div>
         </section></div>`;
       root.querySelector("[data-action='cancel-reset']").focus();
@@ -1931,6 +2782,12 @@
         return;
       }
 
+      const abilityToggle = target.closest("[data-toggle-ability]");
+      if (abilityToggle) {
+        toggleAbility(abilityToggle.dataset.toggleAbility);
+        return;
+      }
+
       const equipmentToggle = target.closest("[data-equipment-toggle]");
       if (equipmentToggle) {
         toggleEquipment(equipmentToggle.dataset.equipmentToggle);
@@ -1940,6 +2797,17 @@
       const equipmentAttack = target.closest("[data-equipment-attack]");
       if (equipmentAttack) {
         attackWithEquipment(equipmentAttack.dataset.equipmentAttack, equipmentAttack.dataset.equipmentAttackId);
+        return;
+      }
+
+      const afflictionRemove = target.closest("[data-affliction-remove]");
+      if (afflictionRemove) {
+        removeAffliction(afflictionRemove.dataset.afflictionRemove);
+        return;
+      }
+      const afflictionClear = target.closest("[data-affliction-clear]");
+      if (afflictionClear) {
+        removeAffliction(afflictionClear.dataset.afflictionClear, true);
         return;
       }
 
@@ -1958,8 +2826,20 @@
 
     document.addEventListener("submit", (event) => {
       const form = event.target;
-      if (!(form instanceof HTMLFormElement) || !form.matches("[data-configurable-ability]")) return;
+      if (!(form instanceof HTMLFormElement)) return;
       event.preventDefault();
+      if (form.matches("[data-add-affliction]")) {
+        const values = new FormData(form);
+        const durationValue = String(values.get("duration") || "").trim();
+        addManualAffliction(
+          String(values.get("characterId") || ""),
+          String(values.get("afflictionId") || ""),
+          Number(values.get("stacks")),
+          durationValue ? Number(durationValue) : null
+        );
+        return;
+      }
+      if (!form.matches("[data-configurable-ability]")) return;
       const values = Object.fromEntries(new FormData(form).entries());
       for (const [field, value] of Object.entries(values)) values[field] = Number(value);
       if (useAbility(form.dataset.configurableAbility, values)) {
