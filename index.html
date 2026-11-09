@@ -224,9 +224,13 @@
     .essence-ability-group .ability-row { grid-template-columns: minmax(0, 1fr) auto; }
     .racial-gifts-section { margin-top: 20px; }
     .equipment-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .equipment-attack-option { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 5px; }
+    .equipment-title { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 4px 8px; white-space: nowrap; }
+    .equipment-title .ability-name { font-size: 12px; }
+    .equipment-type, .equipment-status { color: var(--muted); font-size: 9px; white-space: nowrap; }
     .equipment-attack-log { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.6; }
     .equipment-attack-entry + .equipment-attack-entry { margin-top: 3px; }
-    .equipment-row { align-items: start; }
+    .equipment-row { grid-template-columns: minmax(0, 1fr); align-items: start; }
     .equipment-row .ability-description { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.5; }
     .variant-select { max-width: 190px; margin-top: 7px; padding: 5px 8px; border: 1px solid var(--line-bright); border-radius: 6px; background: #171a19; color: var(--text); font: inherit; font-size: 9px; }
     .passive-label { color: #b6a4ce; font-size: 9px; letter-spacing: .1em; }
@@ -345,9 +349,17 @@
      * Ability variants are separate configurations nested on the ability, not separate category entries.
      * Variant fields override the base ability fields; set duration to keep a cooldown paused while the effect is active. \
      * Racial gifts are free to use and may have cooldown and duration fields.
-     * Configure each character's equipment as [{ id, name, type, description, attack, statEffects }].
-     * Use type: "weapon" to show an Attack button; attack is display text only. Equipped statEffects use { id, stat, bonus }.
-     * Example: { id: "iron-sword", name: "Iron Sword", type: "weapon", attack: "1D8", statEffects: [{ id: "iron-sword-attack", stat: "physicalAttack", bonus: "1D8" }] }.
+     * Configure equipment as [{ id, name, type, summary, description, statEffects }].
+     * Optional summary and description text is shown below the equipment name.
+     * Configure character titles and inventory as [{ name, description }].
+     * Weapons use attacks: [{ id, name, stat, modifier }]; attack amounts include matching active/passive ability and racial-gift statEffects.
+     * Set damageMultiplier on a weapon (for example 0.75) to scale the selected stat and its bonuses, rounding up after the roll, before adding the weapon modifier.
+     * A weapon without attacks gets a default Attack using item.stat (or physicalAttack) and item.modifier.
+     * Example: { id: "spectres-blade", name: "Spectre's Blade", type: "weapon", attacks: [
+     *   { id: "standard", name: "Standard Attack", stat: "physicalAttack", modifier: "1D8" },
+     *   { id: "sneak", name: "Sneak Attack", stat: "physicalAttack", modifier: "2D8" }
+     * ] }.
+     * Equipped statEffects use { id, stat, bonus }.
      * Active abilities default to one use per owner turn.
      * Set usesPerTurn above 1 for an ability that can be used multiple times on its owner's turn.
      * Abilities may define charges and recharge; each spent charge restores after that many owner turns.
@@ -413,7 +425,25 @@
           { id: "bob-seeing-double", name: "Seeing Double", category: "Doppelganger", summary: "Decrease perception of enemies within your aura.", description: "Decrease perception of enemies within your aura and you can see through illusions upto bronze rank.", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Perception", "Illusion", "passive"] }
         ],
         equipment: [
-          { id: "iron-sword", name: "Iron Sword", type: "weapon", attack: "1D8", statEffects: [{ id: "sword-attack", stat: "physicalAttack", bonus: "1D8" }] }
+          { id: "spectres-blade", name: "Spectre's Blade", type: "weapon", summary: "Deals damage equal to 0.75 of magic damage and does afflictions", description: "Spectre's Blade does damage equal to 0.75 of the user's magic damage. Inficts [Phantom\'s Curse] on enemies and [Ectoplasm] on user", damageMultiplier: 0.75, attacks: [
+            { id: "standard", name: "Standard Attack", stat: "magic", modifier: "+1" },
+            { id: "sneak", name: "Sneak Attack", stat: "magic", modifier: "2D8" }
+          ] },
+          { id: "cloak-of-the-spectre", name: "Cloak of the Spectre", summary: "While equipped, become intangible, do sneak attacks and disengage/dash as bonus action", description: "While equipped, become intangible(take 0.75 damage from physical but 1.5 from disruptive force(you must do the math yourself)), you can do sneak attacks if an ally is within one space of your target for an extra 2D8 and you may disengage/dash as a bonus action" },
+          { id: "bramble-crown", name: "Bramble Crown", summary: "While equipped, afflictions can be applied to plants.", description: "While equipped, you make plants and other organic entities more vulnerable, allowing afflictions to be more easily applied, this includes afflictions that they may have an intrinsic immunity too such as [Bleeding] or curses." },
+          { id: "amulet-of-elemental-protection", name: "Amulet of Elemental Protection", summary: "While equipped, protection from weather events.", description: "While equipped, you are protected from the effects of weather events such as rain, hail, and snow bouncing off an invisible shield, harsh sunlight being toned down and sandstorms blowing around you." }
+        ],
+        titles: [
+        { id: "bob-godless-prophet", name: "Godless Prophet", description: "Your aura has been damaged by the direct, concerted focus of multiple transcendant level entities. This has increased the strength of your aura, including it's suppressive force and resistance to suppression. An echo of transcendant power if your aura is examined by a power or when projecting it" },
+        { id: "bob-spirit-warrior", name: "Spirit Warrior", description: "Fighting off a concerted attack on your soul by a transcendant entity  has refined your ability to use it as a weapon. Your repressive force and resistance to suppression is increased, you can use this to resist forms of magical suppression beyond just aura suppression. After fully suppressing the aura of others, you may use your aura to attack their soul. Your unyielding nature in the face of even the greatest power can be detected if your aura is examined by a power or when projecting it." }
+        ],
+        inventory: [
+        { id: "sin-essence", name: "Sin Essence", description: "An essence that gives an ability related to transgression. Only usable if an eligible race has less than 4 essences"},
+        { id: "lesser-miracle-potion", name: "Lesser Miracle Potion", description: "A potion that completely restores health, mana and stamina. Only works on iron rankers and below."},
+        { id: "padded-leather-armor", name: "Padded Leather Armor", description: "A light armor that provides basic protection."},
+        { id: "rain-awakening-stone", name: "Rain Awakening Stone", description: "A stone that awakens the power of rain. Can only be used if an eligible race has less than 20 essence abilities."},
+        { id: "ritual-magic-skill-book", name: "Ritual Magic Skill Book", description: "A book that teaches the fundementals of ritual magic. Can be used during a long rest." },
+        { id: "bob-money", name: "Money", description: "500 Gold spirit coints, can eat one to temporarily increase power levels for one turn but has debilitating effects on next turn." }
         ],
         racialGifts: [
           { id: "bob-strengthened-flesh", name: "Strengthened Flesh", summary: "Increased damage resistance.", description: "Your Smoulder ancestry and flesh powers have mutated you into a combination of both; you have increased damage resistance.", cooldown: 0, duration: 0, tags: ["Racial Gift", "elemental", "Buff", "passive"], statEffects: [
@@ -467,6 +497,8 @@
           { id: "garran-thunder-call", name: "Thunder Call", category: "Support", description: "Sound a resonant call that steadies the whole party.", mana: 14, stamina: 10, cooldown: 2, tags: ["thunder", "support"] }
         ],
         equipment: [],
+        titles: [],
+        inventory: [],
         racialGifts: [
           { id: "garran-stone-blood", name: "Stoneblood", description: "Harden your stonekin hide against the next blow.", cooldown: 3, duration: 2, tags: ["root", "defense"] }
         ]
@@ -502,6 +534,8 @@
           { id: "sera-quiet-company", name: "Quiet Company", category: "Support", description: "Soothe an ally with a familiar voice carried on the wind.", mana: 20, stamina: 0, cooldown: 2, tags: ["echo", "support"] }
         ],
         equipment: [],
+        titles: [],
+        inventory: [],
         racialGifts: [
           { id: "sera-veilborn-step", name: "Veilborn Step", description: "Slip into the veil and emerge from a nearby shadow.", cooldown: 3, duration: 1, tags: ["movement", "illusion"] }
         ]
@@ -537,6 +571,8 @@
           { id: "orin-share-the-light", name: "Share the Light", category: "Support", description: "Lend a companion a spark of your solar reserve.", mana: 16, stamina: 6, cooldown: 2, tags: ["light", "support"] }
         ],
         equipment: [],
+        titles: [],
+        inventory: [],
         racialGifts: [
           { id: "orin-dawnkin-aura", name: "Dawnkin Aura", description: "Surround yourself and nearby allies with a renewing dawnlight.", cooldown: 4, duration: 2, tags: ["light", "healing"] }
         ]
@@ -561,6 +597,14 @@
       necrotoxin: {
         name: "Necrotoxin",
         description: "Inflicts 1D6 damage at the start of each turn for each instance of this affliction until poison is cleansed."
+      },
+      "phantom\'s curse": {
+        name: "Phantom\'s Curse",
+        description: "The recipient takes +1 damage from Intangible entities."
+      },
+      ectoplasm: {
+        name: "Ectoplasm",
+        description: "You become harder to perceive and will become completely invisible when stacks of this affliction >= their perception."
       }
     };
     const STORAGE_KEY = "pallimustas-campaign-v1";
@@ -611,6 +655,116 @@
       return [];
     }
 
+    function equipmentAttacks(item) {
+      if (Array.isArray(item.attacks) && item.attacks.length) {
+        return item.attacks.filter((attack) => attack && typeof attack === "object").map((attack, index) => ({
+          id: typeof attack.id === "string" && attack.id ? attack.id : `attack-${index + 1}`,
+          name: typeof attack.name === "string" && attack.name ? attack.name : `Attack ${index + 1}`,
+          stat: typeof attack.stat === "string" && attack.stat ? attack.stat : item.stat || "physicalAttack",
+          modifier: attack.modifier ?? item.modifier ?? ""
+        }));
+      }
+      return [{
+        id: "default",
+        name: "Attack",
+        stat: typeof item.stat === "string" && item.stat ? item.stat : "physicalAttack",
+        modifier: item.modifier ?? item.attack ?? ""
+      }];
+    }
+
+    function statDisplayName(stat) {
+      return stat.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`)
+        .replace(/^./, (letter) => letter.toUpperCase());
+    }
+
+    function parseDiceFormula(formula) {
+      if (typeof formula === "number") {
+        return Number.isFinite(formula) ? { dice: new Map(), flat: formula } : null;
+      }
+      if (typeof formula !== "string" || !formula.trim()) return null;
+      const expression = formula.replace(/\s+/g, "");
+      const termPattern = /([+-]?)(\d+(?:\.\d+)?)(?:[dD](\d+))?/gy;
+      const result = { dice: new Map(), flat: 0 };
+      let position = 0;
+      let firstTerm = true;
+      while (position < expression.length) {
+        termPattern.lastIndex = position;
+        const match = termPattern.exec(expression);
+        if (!match || (!firstTerm && !match[1])) return null;
+        const sign = match[1] === "-" ? -1 : 1;
+        const amount = Number(match[2]) * sign;
+        if (match[3]) {
+          const count = Math.abs(amount);
+          const sides = Number(match[3]);
+          if (!Number.isSafeInteger(count) || !Number.isSafeInteger(sides) || sides < 1) return null;
+          result.dice.set(sides, (result.dice.get(sides) || 0) + sign * count);
+        } else {
+          result.flat += amount;
+        }
+        position = termPattern.lastIndex;
+        firstTerm = false;
+      }
+      return firstTerm ? null : result;
+    }
+
+    function formatDiceFormula(formula) {
+      const terms = [...formula.dice.entries()]
+        .filter(([, count]) => count !== 0)
+        .sort(([sidesA], [sidesB]) => sidesA - sidesB)
+        .map(([sides, count]) => ({ value: `${Math.abs(count)}D${sides}`, sign: Math.sign(count) }));
+      if (formula.flat !== 0) {
+        terms.push({ value: String(Math.abs(formula.flat)), sign: Math.sign(formula.flat) });
+      }
+      if (!terms.length) return "0";
+      return terms.map((term, index) =>
+        index === 0
+          ? `${term.sign < 0 ? "-" : ""}${term.value}`
+          : ` ${term.sign < 0 ? "-" : "+"} ${term.value}`
+      ).join("");
+    }
+
+    function equipmentAttackResult(character, item, attack) {
+      const multiplier = attack.damageMultiplier ?? item.damageMultiplier ?? 1;
+      if (!Number.isFinite(multiplier) || multiplier <= 0) return null;
+
+      const statFormula = parseDiceFormula(character.stats[attack.stat]);
+      const hasWeaponModifier = attack.modifier !== undefined && attack.modifier !== null && String(attack.modifier).trim() !== "";
+      const weaponFormula = hasWeaponModifier ? parseDiceFormula(attack.modifier) : { dice: new Map(), flat: 0 };
+      if (!statFormula || !weaponFormula) return null;
+
+      const totalStatFormula = { dice: new Map(statFormula.dice), flat: statFormula.flat };
+      for (const modifier of getStatModifiers(character, attack.stat, false)) {
+        const parsed = parseDiceFormula(modifier.bonus);
+        if (!parsed) return null;
+        for (const [sides, count] of parsed.dice) {
+          totalStatFormula.dice.set(sides, (totalStatFormula.dice.get(sides) || 0) + count);
+        }
+        totalStatFormula.flat += parsed.flat;
+      }
+      const scaled = { dice: new Map(), flat: 0 };
+      for (const [sides, count] of totalStatFormula.dice) {
+        scaled.dice.set(sides, Math.ceil(count * multiplier - Number.EPSILON * Math.abs(count * multiplier) * 4));
+      }
+      scaled.flat = Math.ceil(totalStatFormula.flat * multiplier - Number.EPSILON * Math.abs(totalStatFormula.flat * multiplier) * 4);
+      for (const [sides, count] of weaponFormula.dice) {
+        scaled.dice.set(sides, (scaled.dice.get(sides) || 0) + count);
+      }
+      scaled.flat += weaponFormula.flat;
+
+      return {
+        amount: formatDiceFormula(scaled),
+        weaponModifier: hasWeaponModifier ? formatDiceFormula(weaponFormula) : ""
+      };
+    }
+
+    function equipmentAttackSummary(character, item, attack) {
+      const result = equipmentAttackResult(character, item, attack);
+      if (!result) return "Invalid damage formula";
+      return result.weaponModifier
+        ? `${result.amount} (includes ${item.name} ${result.weaponModifier})`
+        : result.amount;
+    }
+
     function isValidStatEffect(effect, character) {
       return Boolean(
         effect &&
@@ -657,7 +811,7 @@
       };
     }
 
-    function getStatModifiers(character, stat) {
+    function getStatModifiers(character, stat, includeEquipment = true) {
       const activeModifiers = state.activeStatEffects.flatMap((activeEffect) => {
         if (activeEffect.targetCharacterId !== character.id) return [];
         const effect = findConfiguredStatEffect(
@@ -686,11 +840,13 @@
         )
       );
       const equippedItemIds = new Set(state.characters[character.id].equippedEquipment || []);
-      const equipmentModifiers = (character.equipment || [])
-        .filter((item) => equippedItemIds.has(item.id))
-        .flatMap((item) => (item.statEffects || [])
-          .filter((effect) => effect.stat === stat && typeof effect.bonus === "string")
-          .map((effect) => ({ bonus: effect.bonus, source: item.name, detail: "Equipped" })));
+      const equipmentModifiers = includeEquipment
+        ? (character.equipment || [])
+          .filter((item) => equippedItemIds.has(item.id))
+          .flatMap((item) => (item.statEffects || [])
+            .filter((effect) => effect.stat === stat && typeof effect.bonus === "string")
+            .map((effect) => ({ bonus: effect.bonus, source: item.name, detail: "Equipped" })))
+        : [];
       return [...activeModifiers, ...passiveModifiers, ...equipmentModifiers];
     }
 
@@ -846,8 +1002,17 @@
           const item = character?.equipment?.find((equipment) =>
             equipment.id === entry?.equipmentId && equipment.type === "weapon"
           );
-          return item && Number.isInteger(entry.turn) && entry.turn > 0
-            ? [{ characterId: character.id, equipmentId: item.id, turn: entry.turn }]
+          const attack = item && equipmentAttacks(item).find((configuredAttack) =>
+            configuredAttack.id === (entry?.attackId || "default")
+          );
+          return attack && Number.isInteger(entry.turn) && entry.turn > 0
+            ? [{
+              characterId: character.id,
+              equipmentId: item.id,
+              attackId: attack.id,
+              turn: entry.turn,
+              ...(typeof entry.damageSummary === "string" ? { damageSummary: entry.damageSummary.slice(0, 500) } : {})
+            }]
             : [];
         }).slice(-10);
       }
@@ -1310,24 +1475,47 @@
           const bonus = /^[+-]/.test(effect.bonus) ? effect.bonus : `+${effect.bonus}`;
           return `<span class="cost-chip active-chip">${escapeHtml(label)} ${escapeHtml(bonus)}</span>`;
         }).join("");
-        const attack = item.type === "weapon" && item.attack
-          ? `<div class="section-helper">Attack: ${escapeHtml(item.attack)}</div>`
-          : "";
+        const attacks = item.type === "weapon" ? equipmentAttacks(item) : [];
+        const attackOptions = attacks.map((attack) => {
+          const validConfiguration = Object.hasOwn(character.stats, attack.stat) &&
+            equipmentAttackResult(character, item, attack) !== null;
+          return `<div class="equipment-attack-option"><span class="section-helper">${escapeHtml(equipmentAttackSummary(character, item, attack))}</span>${equipped ? `<button class="button primary" data-equipment-attack="${escapeHtml(item.id)}" data-equipment-attack-id="${escapeHtml(attack.id)}" ${validConfiguration ? "" : "disabled"}>${escapeHtml(attack.name)}</button>` : ""}</div>`;
+        }).join("");
+        const description = item.description
+          ? renderAbilityDescription(item)
+          : item.summary ? `<div class="ability-description">${escapeHtml(item.summary)}</div>` : "";
         return `<div class="ability-row equipment-row">
-          <div><div class="ability-name">${escapeHtml(item.name)}${item.type ? ` · ${escapeHtml(item.type)}` : ""}${equipped ? " · Equipped" : ""}</div>${item.description ? `<div class="ability-description">${escapeHtml(item.description)}</div>` : ""}${attack}<div class="ability-costs">${effects}</div></div>
-          <div class="equipment-actions"><button class="button ${equipped ? "" : "primary"}" data-equipment-toggle="${escapeHtml(item.id)}" aria-pressed="${equipped}">${equipped ? "Unequip" : "Equip"}</button>${item.type === "weapon" && equipped ? `<button class="button primary" data-equipment-attack="${escapeHtml(item.id)}">Attack</button>` : ""}</div>
+          <div><div class="equipment-title"><span class="ability-name">${escapeHtml(item.name)}</span>${item.type ? `<span class="equipment-type">${escapeHtml(item.type)}</span>` : ""}${equipped ? '<span class="equipment-status">Equipped</span>' : ""}</div>${description}<div class="ability-costs">${effects}</div></div>
+          <div class="equipment-actions"><button class="button ${equipped ? "" : "primary"}" data-equipment-toggle="${escapeHtml(item.id)}" aria-pressed="${equipped}">${equipped ? "Unequip" : "Equip"}</button>${equipped ? attackOptions : ""}</div>
         </div>`;
       }).join("") : '<div class="empty-note">No equipment configured for this character yet.</div>';
       const recentAttacks = (state.equipmentAttackLog || []).slice(-5).reverse().map((entry) => {
         const owner = characterById(entry.characterId);
         const item = owner?.equipment?.find((configuredItem) => configuredItem.id === entry.equipmentId);
-        return owner && item
-          ? `<div class="equipment-attack-entry">Round ${entry.turn}: ${escapeHtml(owner.name)} attacks with ${escapeHtml(item.name)}${item.attack ? ` (${escapeHtml(item.attack)})` : ""}.</div>`
+        const attack = item && equipmentAttacks(item).find((configuredAttack) =>
+          configuredAttack.id === (entry.attackId || "default")
+        );
+        return owner && item && attack
+          ? `<div class="equipment-attack-entry">Round ${entry.turn}: ${escapeHtml(owner.name)} uses ${escapeHtml(attack.name)} with ${escapeHtml(item.name)} — ${escapeHtml(entry.damageSummary || equipmentAttackSummary(owner, item, attack))}.</div>`
           : "";
       }).join("");
       return `<section class="ability-section equipment-section">
-        <div class="ability-heading"><div><div class="section-title">Equipment</div><div class="section-helper" style="margin-top:5px">Equip items independently. Equipped stat bonuses are applied to this sheet; weapon attacks are recorded without damage tracking.</div></div><div class="section-helper">${equipment.length} configured</div></div>
+        <div class="ability-heading"><div><div class="section-title">Equipment</div><div class="section-helper" style="margin-top:5px">Equip items independently. Equipped stat bonuses are applied to this sheet; weapon attacks use the selected stat and modifier and are recorded without damage tracking.</div></div><div class="section-helper">${equipment.length} configured</div></div>
         <div class="ability-group"><div class="ability-list">${rows}</div>${recentAttacks ? `<div class="equipment-attack-log" aria-live="polite">${recentAttacks}</div>` : ""}</div>
+      </section>`;
+    }
+
+    function renderCharacterCollection(character, field, title) {
+      const entries = Array.isArray(character[field]) ? character[field] : [];
+      const rows = entries
+        .filter((entry) => entry && typeof entry.name === "string")
+        .map((entry) => `<div class="ability-row equipment-row">
+          <div><div class="ability-name">${escapeHtml(entry.name)}</div>${entry.description ? `<div class="ability-description">${escapeHtml(entry.description)}</div>` : ""}</div>
+        </div>`)
+        .join("");
+      return `<section class="ability-section">
+        <div class="ability-heading"><div class="section-title">${escapeHtml(title)}</div><div class="section-helper">${entries.length} configured</div></div>
+        <div class="ability-group"><div class="ability-list">${rows || `<div class="empty-note">No ${escapeHtml(title.toLowerCase())} configured for this character yet.</div>`}</div></div>
       </section>`;
     }
 
@@ -1374,7 +1562,9 @@
         </div>
         ${renderRacialGifts(character)}
         ${renderAbilities(character)}
-        ${renderEquipment(character)}`;
+        ${renderEquipment(character)}
+        ${renderCharacterCollection(character, "titles", "Titles")}
+        ${renderCharacterCollection(character, "inventory", "Inventory")}`;
     }
 
     // Re-render all surfaces together so the roster, dashboard, sheet, and turn badge stay in sync.
@@ -1572,20 +1762,31 @@
       notify(`${item.name} ${isEquipped ? "unequipped" : "equipped"}.`);
     }
 
-    function attackWithEquipment(itemId) {
+    function attackWithEquipment(itemId, attackId) {
       const character = getSelectedCharacter();
       const item = (character.equipment || []).find((entry) => entry.id === itemId && entry.type === "weapon");
       if (!item || !state.characters[character.id].equippedEquipment?.includes(item.id)) return;
+      const attack = equipmentAttacks(item).find((entry) => entry.id === attackId);
+      const multiplier = attack?.damageMultiplier ?? item.damageMultiplier ?? 1;
+      const result = attack && equipmentAttackResult(character, item, attack);
+      if (!attack || !Object.hasOwn(character.stats, attack.stat) || !Number.isFinite(multiplier) || multiplier <= 0 || !result) {
+        console.error(`Invalid weapon attack configuration for ${character.name}'s ${item.name}.`, attack);
+        notify(`${item.name} has an invalid attack stat, damage formula, or damage multiplier configuration. Check the code.`);
+        return;
+      }
+      const damageSummary = equipmentAttackSummary(character, item, attack);
       state.equipmentAttackLog ??= [];
       state.equipmentAttackLog.push({
         characterId: character.id,
         equipmentId: item.id,
-        turn: state.turn
+        attackId: attack.id,
+        turn: state.turn,
+        damageSummary
       });
       state.equipmentAttackLog = state.equipmentAttackLog.slice(-10);
       saveCampaign();
       render();
-      notify(`${character.name} attacks with ${item.name}${item.attack ? ` (${item.attack})` : ""}.`);
+      notify(`${character.name} uses ${attack.name} with ${item.name} — ${damageSummary}.`);
     }
 
     function endTurn() {
@@ -1738,7 +1939,7 @@
 
       const equipmentAttack = target.closest("[data-equipment-attack]");
       if (equipmentAttack) {
-        attackWithEquipment(equipmentAttack.dataset.equipmentAttack);
+        attackWithEquipment(equipmentAttack.dataset.equipmentAttack, equipmentAttack.dataset.equipmentAttackId);
         return;
       }
 
