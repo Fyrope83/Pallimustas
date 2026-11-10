@@ -1907,8 +1907,8 @@
 
     function configurableAbilityFields(ability, isRacialGift) {
       return [
-        ...(!isRacialGift && isConfigurableAbilityValue(ability.mana) ? ["mana"] : []),
-        ...(!isRacialGift && isConfigurableAbilityValue(ability.stamina) ? ["stamina"] : []),
+        ...(isConfigurableAbilityValue(ability.mana) ? ["mana"] : []),
+        ...(isConfigurableAbilityValue(ability.stamina) ? ["stamina"] : []),
         ...(isConfigurableAbilityValue(ability.cooldown) ? ["cooldown"] : []),
         ...(ability.inputFields || []).map((field) => `input:${field.id}`),
         ...(ability.resourceEffects || [])
