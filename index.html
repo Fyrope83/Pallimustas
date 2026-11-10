@@ -385,6 +385,7 @@
      * Configure character titles and inventory as [{ name, description }].
      * Weapons use attacks: [{ id, name, stat, modifier }]; attack amounts include matching active/passive ability and racial-gift statEffects.
      * Set damageMultiplier on a weapon (for example 0.75) to scale the selected stat and its bonuses, rounding up after the roll, before adding the weapon modifier.
+     * Set damageDieSides on a weapon to convert every die in its attack stat, stat bonuses, and weapon modifier to that die size before damage scaling. Flat bonuses are unchanged.
      * A weapon without attacks gets a default Attack using item.stat (or physicalAttack) and item.modifier.
      * Weapon afflictionEffects use { id, afflictionId, target, stacks, duration }; target is "wielder", "selected", or "wielder-and-selected".
      * Example: { id: "spectres-blade", name: "Spectre's Blade", type: "weapon", attacks: [
@@ -564,11 +565,11 @@
           { id: "nero-complete-unification", name: "Complete Unification", category: "Vessel", summary: "You are a gestalt entity and you are stronger because of it.", description: "Your body and soul are one. Your aura is greatly strengthened, and you have a greater resistance to astral forces or effects that utilise the soul-body disconnect. Your resistance to hostile dimension effects is increased and dimension effects, disruptive force damage and transcendent damage you deal is increased. Physicall reallity around you is more stable and you are able to sense nearby astral space aperatures and proto-spaces coterminous to your location. You can enter them even if they\'re closed or sealed. If you can enter the astral, you can create a small zone of physical reality around you. When suffering lethal damage, instead of dying. Your new body wil undergo a nirvanic rebirth, returning to a state of full integrity. This effect can only be triggered again after you rank up from the last time it was used.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Dimension", "passive"] }
         ],
         equipment: [
-          { id: "nero-gladiator-sword", name: "Gladiator's Sword", type: "weapon", summary: "A sword that does afflictions and more damage with speed", description: "Strikes with this weapon inflict [Gladiator's Honour] and [The Crowd Cheers] on both target and wielder. All melee attacks with this weapon deal D10 damage and attacks made double momentum stacks. Imbued with Bloodroot Sap and applies [Subjugating Toxin] on hit.", attacks: [
+          { id: "nero-gladiator-sword", name: "Gladiator's Sword", type: "weapon", summary: "A sword that does afflictions and more damage with speed", description: "Strikes with this weapon inflict [Gladiator's Honour] and [The Crowd Cheers] on both target and wielder. All melee attacks with this weapon deal D10 damage and attacks made double momentum stacks. Imbued with Bloodroot Sap and applies [Subjugating Toxin] on hit.", damageDieSides: 10, attacks: [
             { id: "standard", name: "Standard Attack", stat: "physicalAttack" } ], afflictionEffects: [
             { id: "gladiators-honour", afflictionId: "gladiator's honour", target: "wielder", stacks: 1, duration: null },
             { id: "crowd-cheers", afflictionId: "the crowd cheers", target: "wielder", stacks: 1, duration: null } ] },
-          { id: "nero-gladiator-scabbard", name: "Gladiator's Scabbard", type: "weapon", summary: "A scabbard that shows your mercy and honour", description: "when \"Gladiator's Sword\" is sheathed inside, any instances of [Gladiator's Honour] and [The Crowd Cheers] are removed from everyone. Strike enemies with the sheathed sword to inflict [Gladiator's Mercy] and [The Crowd Boos] on the target.", attacks: [
+          { id: "nero-gladiator-scabbard", name: "Gladiator's Scabbard", type: "weapon", summary: "A scabbard that shows your mercy and honour", description: "when \"Gladiator's Sword\" is sheathed inside, any instances of [Gladiator's Honour] and [The Crowd Cheers] are removed from everyone. Strike enemies with the sheathed sword to inflict [Gladiator's Mercy] and [The Crowd Boos] on the target.", damageDieSides: 10, attacks: [
             { id: "standard", name: "Sheathed Strike", stat: "physicalAttack" } ] },
           { id: "nero-frying-pan", name: "Frying Pan", type: "weapon", summary: "A improvised frying pan", description: "An improvised frying pan that has been attached to a long bendy stick... for some reason. Imbued with Bloodroot Sap and applies [Subjugating Toxin] on hit.", attacks: [
             { id: "standard", name: "Standard Attack", stat: "physicalAttack", modifier: "-1D8" } ] },
@@ -997,18 +998,36 @@
       ).join("");
     }
 
+    function changeDiceSides(formula, sides) {
+      if (!Number.isSafeInteger(sides) || sides < 1) return null;
+      return {
+        dice: formula.dice.size
+          ? new Map([[sides, [...formula.dice.values()].reduce((total, count) => total + count, 0)]])
+          : new Map(),
+        flat: formula.flat
+      };
+    }
+
     function equipmentAttackResult(character, item, attack) {
       const multiplier = attack.damageMultiplier ?? item.damageMultiplier ?? 1;
       if (!Number.isFinite(multiplier) || multiplier <= 0) return null;
 
-      const statFormula = parseDiceFormula(character.stats[attack.stat]);
+      const configuredDieSides = attack.damageDieSides ?? item.damageDieSides;
+      const transformDice = configuredDieSides !== undefined;
+      const rawStatFormula = parseDiceFormula(character.stats[attack.stat]);
       const hasWeaponModifier = attack.modifier !== undefined && attack.modifier !== null && String(attack.modifier).trim() !== "";
-      const weaponFormula = hasWeaponModifier ? parseDiceFormula(attack.modifier) : { dice: new Map(), flat: 0 };
+      const rawWeaponFormula = hasWeaponModifier ? parseDiceFormula(attack.modifier) : { dice: new Map(), flat: 0 };
+      if (!rawStatFormula || !rawWeaponFormula) return null;
+      const statFormula = transformDice ? changeDiceSides(rawStatFormula, configuredDieSides) : rawStatFormula;
+      const weaponFormula = transformDice ? changeDiceSides(rawWeaponFormula, configuredDieSides) : rawWeaponFormula;
       if (!statFormula || !weaponFormula) return null;
 
       const totalStatFormula = { dice: new Map(statFormula.dice), flat: statFormula.flat };
       for (const modifier of getStatModifiers(character, attack.stat, false)) {
-        const parsed = parseDiceFormula(modifier.bonus);
+        const rawModifier = parseDiceFormula(modifier.bonus);
+        const parsed = rawModifier && transformDice
+          ? changeDiceSides(rawModifier, configuredDieSides)
+          : rawModifier;
         if (!parsed) return null;
         for (const [sides, count] of parsed.dice) {
           totalStatFormula.dice.set(sides, (totalStatFormula.dice.get(sides) || 0) + count);
