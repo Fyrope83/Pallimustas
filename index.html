@@ -386,6 +386,7 @@
      * Weapons use attacks: [{ id, name, stat, modifier }]; attack amounts include matching active/passive ability and racial-gift statEffects.
      * Set damageMultiplier on a weapon (for example 0.75) to scale the selected stat and its bonuses, rounding up after the roll, before adding the weapon modifier.
      * A weapon without attacks gets a default Attack using item.stat (or physicalAttack) and item.modifier.
+     * Weapon afflictionEffects use { id, afflictionId, target, stacks, duration }; target is "wielder", "selected", or "wielder-and-selected".
      * Example: { id: "spectres-blade", name: "Spectre's Blade", type: "weapon", attacks: [
      *   { id: "standard", name: "Standard Attack", stat: "physicalAttack", modifier: "1D8" },
      *   { id: "sneak", name: "Sneak Attack", stat: "physicalAttack", modifier: "2D8" }
@@ -458,10 +459,11 @@
           { id: "bob-seeing-double", name: "Seeing Double", category: "Doppelganger", summary: "Decrease perception of enemies within your aura.", description: "Decrease perception of enemies within your aura and you can see through illusions upto bronze rank.", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Perception", "Illusion", "passive"] }
         ],
         equipment: [
-          { id: "spectres-blade", name: "Spectre's Blade", type: "weapon", summary: "Deals damage equal to 0.75 of magic damage and does afflictions", description: "Spectre's Blade does damage equal to 0.75 of the user's magic damage. Inficts [Phantom\'s Curse] on enemies and [Ectoplasm] on user", damageMultiplier: 0.75, attacks: [
+          { id: "spectres-blade", name: "Spectre's Blade", type: "weapon", summary: "Deals damage equal to 0.75 of magic damage and does afflictions", description: "Spectre's Blade does damage equal to 0.75 of the user's magic damage. Inficts [Phantom\'s Curse] on enemies and [Ectoplasm] on user. Imbued with Bloodroot Sap and applies [Subjugating Toxin] on hit.", damageMultiplier: 0.75, attacks: [
             { id: "standard", name: "Standard Attack", stat: "magic", modifier: "+1" },
             { id: "sneak", name: "Sneak Attack", stat: "magic", modifier: "2D8" }
-          ] },
+          ], afflictionEffects: [
+            { id: "ectoplasm", afflictionId: "ectoplasm", target: "wielder", stacks: 1, duration: null } ] },
           { id: "cloak-of-the-spectre", name: "Cloak of the Spectre", summary: "While equipped, become intangible, do sneak attacks and disengage/dash as bonus action", description: "While equipped, become intangible(take 0.75 damage from physical but 1.5 from disruptive force(you must do the math yourself)), you can do sneak attacks if an ally is within one space of your target for an extra 2D8 and you may disengage/dash as a bonus action" },
           { id: "bramble-crown", name: "Bramble Crown", summary: "While equipped, afflictions can be applied to plants.", description: "While equipped, you make plants and other organic entities more vulnerable, allowing afflictions to be more easily applied, this includes afflictions that they may have an intrinsic immunity too such as [Bleeding] or curses." },
           { id: "amulet-of-elemental-protection", name: "Amulet of Elemental Protection", summary: "While equipped, protection from weather events.", description: "While equipped, you are protected from the effects of weather events such as rain, hail, and snow bouncing off an invisible shield, harsh sunlight being toned down and sandstorms blowing around you." }
@@ -471,10 +473,10 @@
         { id: "bob-spirit-warrior", name: "Spirit Warrior", description: "Fighting off a concerted attack on your soul by a transcendant entity  has refined your ability to use it as a weapon. Your repressive force and resistance to suppression is increased, you can use this to resist forms of magical suppression beyond just aura suppression. After fully suppressing the aura of others, you may use your aura to attack their soul. Your unyielding nature in the face of even the greatest power can be detected if your aura is examined by a power or when projecting it." }
         ],
         inventory: [
-        { id: "sin-essence", name: "Sin Essence", description: "An essence that gives an ability related to transgression. Only usable if an eligible race has less than 4 essences"},
+        { id: "sin-essence", name: "Sin Essence", description: "An essence that gives an active ability and 4 inactive abilities related to transgression. Only usable if an eligible race has less than 4 essences"},
         { id: "lesser-miracle-potion", name: "Lesser Miracle Potion", description: "A potion that completely restores health, mana and stamina. Only works on iron rankers and below."},
         { id: "padded-leather-armor", name: "Padded Leather Armor", description: "A light armor that provides basic protection."},
-        { id: "rain-awakening-stone", name: "Rain Awakening Stone", description: "A stone that awakens the power of rain. Can only be used if an eligible race has less than 20 essence abilities."},
+        { id: "rain-awakening-stone", name: "Rain Awakening Stone", description: "An awakening stone that activates an inactive ability related to rain. Only usable if an eligible race has less than 20 awakened abilities."},
         { id: "ritual-magic-skill-book", name: "Ritual Magic Skill Book", description: "A book that teaches the fundementals of ritual magic. Can be used during a long rest." },
         { id: "bob-money", name: "Money", description: "500 Gold spirit coints, can eat one to temporarily increase power levels for one turn but has debilitating effects on next turn." }
         ],
@@ -561,9 +563,37 @@
           ] },
           { id: "nero-complete-unification", name: "Complete Unification", category: "Vessel", summary: "You are a gestalt entity and you are stronger because of it.", description: "Your body and soul are one. Your aura is greatly strengthened, and you have a greater resistance to astral forces or effects that utilise the soul-body disconnect. Your resistance to hostile dimension effects is increased and dimension effects, disruptive force damage and transcendent damage you deal is increased. Physicall reallity around you is more stable and you are able to sense nearby astral space aperatures and proto-spaces coterminous to your location. You can enter them even if they\'re closed or sealed. If you can enter the astral, you can create a small zone of physical reality around you. When suffering lethal damage, instead of dying. Your new body wil undergo a nirvanic rebirth, returning to a state of full integrity. This effect can only be triggered again after you rank up from the last time it was used.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Dimension", "passive"] }
         ],
-        equipment: [],
-        titles: [],
-        inventory: [],
+        equipment: [
+          { id: "nero-gladiator-sword", name: "Gladiator's Sword", type: "weapon", summary: "A sword that does afflictions and more damage with speed", description: "Strikes with this weapon inflict [Gladiator's Honour] and [The Crowd Cheers] on both target and wielder. All melee attacks with this weapon deal D10 damage and attacks made double momentum stacks. Imbued with Bloodroot Sap and applies [Subjugating Toxin] on hit.", attacks: [
+            { id: "standard", name: "Standard Attack", stat: "physicalAttack" } ], afflictionEffects: [
+            { id: "gladiators-honour", afflictionId: "gladiator's honour", target: "wielder", stacks: 1, duration: null },
+            { id: "crowd-cheers", afflictionId: "the crowd cheers", target: "wielder", stacks: 1, duration: null } ] },
+          { id: "nero-gladiator-scabbard", name: "Gladiator's Scabbard", type: "weapon", summary: "A scabbard that shows your mercy and honour", description: "when \"Gladiator's Sword\" is sheathed inside, any instances of [Gladiator's Honour] and [The Crowd Cheers] are removed from everyone. Strike enemies with the sheathed sword to inflict [Gladiator's Mercy] and [The Crowd Boos] on the target.", attacks: [
+            { id: "standard", name: "Sheathed Strike", stat: "physicalAttack" } ] },
+          { id: "nero-frying-pan", name: "Frying Pan", type: "weapon", summary: "A improvised frying pan", description: "An improvised frying pan that has been attached to a long bendy stick... for some reason. Imbued with Bloodroot Sap and applies [Subjugating Toxin] on hit.", attacks: [
+            { id: "standard", name: "Standard Attack", stat: "physicalAttack", modifier: "-1D8" } ] },
+          { id: "nero-glider-suit", name: "Glider Suit", summary: "A suit that allows you to glide and soar", description: "A suit that allows you to glide and soar. It is resistant to Drag, Rain, with slight air manipulation for mobility. Flaps are stored in a small dimensional space." }
+        ],
+        titles: [
+          { id: "nero-resolute", name: "Resolute", description: "The damage you suffered in your stand against a much more powerfu enemy has marked your soul. Your resistance to higher-ranked auras is increased, Your unfincching resolve can be detected if your aura is examined by a power or when projecting it." }
+        ],
+        inventory: [
+          { id: "nero-mana-potion", name: "Mana Potion", description: "A potion that restores 50 mana." },
+          { id: "nero-lessor-miracle-potion", name: "Lesser Miracle Potion", description: "A potion that completely restores health, mana and stamina. Only works on iron rankers and below."},
+          { id: "nero-bloodroot-whetstone", name: "Bloodroot Whetstone", description: "A whetstone that can be used to imbue weapons with Bloodroot Sap, those weapons then inflict [Subjugating Toxin] on hit"},
+          { id: "nero-snake-essence", name: "Snake Essence", description: "An essence that gives 1 active ability and 4 inactive abilities related to snakes. Only usable if an eligible race has less than 4 essences"},
+          { id: "nero-duck-essence", name: "Duck Essence", description: "An essence that gives 1 active ability and 4 inactive abilities related to ducks. Only usable if an eligible race has less than 4 essences"},
+          { id: "nero-blood-essence", name: "Blood Essence", description: "An essence that gives 1 active ability and 4 inactive abilities related to blood. Only usable if an eligible race has less than 4 essences"},
+          { id: "nero-flesh-essence", name: "Flesh Essence", description: "An essence that gives 1 active ability and 4 inactive abilities related to flesh. Only usable if an eligible race has less than 4 essences. This one belongs to Lizzie but is on loan to Nero."},
+          { id: "nero-plant-essence", name: "Plant Essence", description: "An essence that gives 1 active ability and 4 inactive abilities related to plants. Only usable if an eligible race has less than 4 essences. This one used to belong to Hamish but he's dead now so it belongs to Nero."},
+          { id: "nero-adept-essence", name: "Adept Essence", description: "An essence that gives 1 active ability and 4 inactive abilities related to proficiency. Only usable if an eligible race has less than 4 essences"},
+          { id: "nero-mud-awakening-stone", name: "Mud Awakening Stone", description: "An awakening stone that activates an inactive ability related to mud. Only usable if an eligible race has less than 20 awakened abilities."},
+          { id: "nero-money", name: "Money", description: "500 Gold spirit coints and 164 silver spirit coints, these can be eaten to temporarily increase power levels for one turn but has debilitating effects on next turn. 5 bronze spirit coints, this can increase the power level of an iron ranker or below but satiates bronze rankers magic levels. 1 Lesser spirit coin." },
+          { id: "spell-lance-of-the-magister", name: "Spell Lance of the Magister", description: "The staff of an ancient sorcerer, this weapon primes enemies for a potent magical assault. Basic attack: Focused Disruptive force bolt (extra 1d8 magic) inflicts [Spell Impotence] and [Mana Siphon]. Basic attack: Disruptive force beam. Consumes 1/s mana; sustaining the beam on the target periodically inflicts [Spell Impotence] and [Mana Siphon]. Effect: Increases mana consumption when casting a spell to increase the effect. The effect is further increased if wielding both Spell Lance of the Magister and Magister's Tithe. Instances of [Spell Impotence] are inflicted at a faster rate" },
+          { id: "magisters-tithe", name: "Magister's Tithe", description: "The tithe of an ancient sorcerer, used to sustain combat effectiveness. Basic attack: Disruptive force beam (extra 1D8), Inflicts [Mana Siphon] and [Spell Impotence]. Basic attack: Mana-draining beam; this effect is increased if you are wielding both Spell Lance of the Magister and Magister's Tithe."},
+          { id: "kywraght-notebook", name: "Kywraght's Notebook", description: "This was all that was written in it when he died: Niell Divone, Jory Tilmin - big guy with potions, Keen, Jason, Sophie, Shade - British ghost we meet and follows us, Ahmid Ah Hebeer - wants a scythe for 1 awakening stones per person, gets hired by diamond rankers for things, Constance - Gerry Birad\'he\'s righthand woman, Reaper - great Astral being, death is being finality, guides souls into the Astral, astral beings don't have first names, Astral beings give awakening stones to people who venerate them as a gift, Cannot take it away, it is just a give, Gives us a ability based of essence but also linked to the Reaper and death, Order of Reaper is an order of assassins, who kill kings and queens, Ragged starry cloak, Nightmare hag?, Big tower that creates trials, In rainforest, Reptiles, Puma, Panther, Big snake, Big dog, Hydel horse lizard"}
+
+        ],
         racialGifts: [
           { id: "nero-thighs-of-steel", name: "Thighs of Steel", summary: "Increased Strength, Speed and Reflexes.", description: "Increased Strength by 1D8, Speed by 6 and Reflexes by 1.", stamina: 0, mana: 0, cooldown: 0, duration: 0, tags: ["Racial Gift", "Buff", "passive"], statEffects: [
             { id: "thighs-of-steel-strength", stat: "physicalAttack", bonus: "1D8", target: "self" },
@@ -579,7 +609,7 @@
             { id: "nero-tireless-self", stamina: 10, target: "self" } ] },
           { id: "nero-sprint", name: "Sprint", summary: "You can dash", description: "Do your movement speed again for 135 stamina(this does not cost an action)", stamina: 135, mana: 0, cooldown: 0, duration: 0, usesPerTurn: 99, tags: ["Racial Gift", "Movement"] },
           { id: "nero-echolocation", name: "Echolocation", summary: "You can pulse your aura to sense the area around you", description: "You can pulse your aura to sense the area around you and feel physical objects. Your aura is also stronger", stamina: 0, mana: 0, cooldown: 0, duration: 0, tags: ["Racial Gift", "Perception", "passive"], variants: [
-            { id: "nero-echo-roar", name: "Echo Roar", summary: "Roar to increase stats of allies", description: "Roar to increase Allies' Power, Speed and Spirit attributes for 3 turns", stamina: 0, mana: 0, cooldown: 10, duration: 0, activeVersion: true, tags: ["Racial Gift", "Buff"], afflictioneffects: [
+            { id: "nero-echo-roar", name: "Echo Roar", summary: "Roar to increase stats of allies", description: "Roar to increase Allies' Power, Speed and Spirit attributes for 3 turns", stamina: 0, mana: 0, cooldown: 10, duration: 0, activeVersion: true, tags: ["Racial Gift", "Buff"], afflictionEffects: [
               { id: "nero-echo-roar-buff", afflictionId: "echo-roar", target: "others", stacks: 1, duration: 3, maxStacksPerTurn: 1, maxTotalStacks: 1 }
             ] } ] }
 
@@ -689,6 +719,22 @@
         name: "Phantom\'s Curse",
         description: "The recipient takes +1 damage from Intangible entities."
       },
+      "gladiator's honour": {
+        name: "Gladiator's Honour",
+        description: "The recipient must not move 5 spaces away another person with this affliction or start taking 1 damage per second equal to the number of stacks."
+      },
+      "the crowd cheers": {
+        name: "The Crowd Cheers",
+        description: "Anyone with this affiction has damage done to them mutiplied by 1+instances of this affliction after damage resistance."
+      },
+      "gladiator's mercy": {
+        name: "Gladiator's Mercy",
+        description: "Any damage dealt to someone with this affliction is non-lethal and will not kill the target when their health reaches zero."
+      },
+      "the crowd boos": {
+        name: "The Crowd Boos",
+        description: "Anyone with this affliction is disheartened and must succeed a DC 11 check or will not be able to take an action."
+      },
       ectoplasm: {
         name: "Ectoplasm",
         description: "You become harder to perceive and will become completely invisible when stacks of this affliction >= others perception."
@@ -728,6 +774,10 @@
         name: "Echo Roar",
         description: "Significantly increased Power, Speed and Spirit attributes.",
         statEffects: [{ stat: "physicalAttack", bonus: "1D12", perStack: true }, { stat: "physicalResistance", bonus: "1D12", perStack: true }, { stat: "magic", bonus: "1D12", perStack: true }, { stat: "magicResistance", bonus: "+1D12", perStack: true }, { stat: "speed", bonus: "+12", perStack: true }, { stat: "reflexes", bonus: "+2", perStack: true }]
+      },
+      'subjugating toxin': {
+        name: "Subjugating Toxin",
+        description: "Anyone with this affliction has -1 reflexes, wears off after 1 turn."
       }
     };
     const STORAGE_KEY = "pallimustas-campaign-v1";
@@ -828,6 +878,23 @@
           typeof effect.resourceEffectId === "string" &&
           ["increase", "decrease"].includes(effect.condition)
         ))
+      );
+    }
+
+    function isValidWeaponAfflictionEffect(effect) {
+      return Boolean(
+        effect &&
+        typeof effect.id === "string" &&
+        effect.id.trim() &&
+        Object.hasOwn(AFFLICTION_GLOSSARY, effect.afflictionId) &&
+        ["wielder", "selected", "wielder-and-selected"].includes(effect.target) &&
+        (effect.stacks === undefined || (Number.isSafeInteger(effect.stacks) && effect.stacks > 0)) &&
+        (effect.duration === undefined || effect.duration === null ||
+          (Number.isSafeInteger(effect.duration) && effect.duration > 0)) &&
+        (effect.maxStacksPerTurn === undefined ||
+          (Number.isSafeInteger(effect.maxStacksPerTurn) && effect.maxStacksPerTurn > 0)) &&
+        (effect.maxTotalStacks === undefined ||
+          (Number.isSafeInteger(effect.maxTotalStacks) && effect.maxTotalStacks > 0))
       );
     }
 
@@ -2072,10 +2139,19 @@
           return `<span class="cost-chip active-chip">${escapeHtml(label)} ${escapeHtml(bonus)}</span>`;
         }).join("");
         const attacks = item.type === "weapon" ? equipmentAttacks(item) : [];
+        const needsPartyTarget = (item.afflictionEffects || []).some((effect) =>
+          ["selected", "wielder-and-selected"].includes(effect.target)
+        );
+        const targetPicker = needsPartyTarget
+          ? `<label class="section-helper">Target <select class="variant-select" data-equipment-target="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} target">${CHARACTERS.filter((target) => target.id !== character.id).map((target) =>
+            `<option value="${escapeHtml(target.id)}">${escapeHtml(target.name)}</option>`
+          ).join("")}</select></label>`
+          : "";
         const attackOptions = attacks.map((attack) => {
           const validConfiguration = Object.hasOwn(character.stats, attack.stat) &&
-            equipmentAttackResult(character, item, attack) !== null;
-          return `<div class="equipment-attack-option"><span class="section-helper">${escapeHtml(equipmentAttackSummary(character, item, attack))}</span>${equipped ? `<button class="button primary" data-equipment-attack="${escapeHtml(item.id)}" data-equipment-attack-id="${escapeHtml(attack.id)}" ${validConfiguration ? "" : "disabled"}>${escapeHtml(attack.name)}</button>` : ""}</div>`;
+            equipmentAttackResult(character, item, attack) !== null &&
+            (item.afflictionEffects || []).every(isValidWeaponAfflictionEffect);
+          return `<div class="equipment-attack-option"><span class="section-helper">${escapeHtml(equipmentAttackSummary(character, item, attack))}</span>${equipped ? `${targetPicker}<button class="button primary" data-equipment-attack="${escapeHtml(item.id)}" data-equipment-attack-id="${escapeHtml(attack.id)}" ${validConfiguration ? "" : "disabled"}>${escapeHtml(attack.name)}</button>` : ""}</div>`;
         }).join("");
         const description = item.description
           ? renderAbilityDescription(item)
@@ -2575,7 +2651,42 @@
       }
     }
 
-    function attackWithEquipment(itemId, attackId) {
+    function applyWeaponAfflictionEffects(character, item, selectedTargetId) {
+      const effects = item.afflictionEffects || [];
+      const invalidEffect = effects.find((effect) => !isValidWeaponAfflictionEffect(effect));
+      if (invalidEffect) {
+        console.error(`Invalid weapon affliction configured for ${item.name}.`, invalidEffect);
+        notify(`${item.name} has an invalid affliction configuration. Check the code.`);
+        return null;
+      }
+      if (effects.some((effect) => ["selected", "wielder-and-selected"].includes(effect.target)) &&
+          !characterById(selectedTargetId)) {
+        notify(`Choose a valid party target for ${item.name}.`);
+        return null;
+      }
+
+      const appliedAfflictions = [];
+      for (const effect of effects) {
+        const recipients = effect.target === "wielder"
+          ? [character.id]
+          : effect.target === "selected"
+            ? [selectedTargetId]
+            : [...new Set([character.id, selectedTargetId])];
+        for (const recipientId of recipients) {
+          applyConfiguredAfflictionEffect(
+            character,
+            item,
+            { ...effect, target: "self" },
+            recipientId,
+            effect.stacks || 1
+          );
+          appliedAfflictions.push(`${AFFLICTION_GLOSSARY[effect.afflictionId].name} → ${characterById(recipientId).name}`);
+        }
+      }
+      return appliedAfflictions;
+    }
+
+    function attackWithEquipment(itemId, attackId, selectedTargetId = null) {
       const character = getSelectedCharacter();
       const item = (character.equipment || []).find((entry) => entry.id === itemId && entry.type === "weapon");
       if (!item || !state.characters[character.id].equippedEquipment?.includes(item.id)) return;
@@ -2587,6 +2698,8 @@
         notify(`${item.name} has an invalid attack stat, damage formula, or damage multiplier configuration. Check the code.`);
         return;
       }
+      const afflictions = applyWeaponAfflictionEffects(character, item, selectedTargetId);
+      if (afflictions === null) return;
       const damageSummary = equipmentAttackSummary(character, item, attack);
       state.equipmentAttackLog ??= [];
       state.equipmentAttackLog.push({
@@ -2599,7 +2712,7 @@
       state.equipmentAttackLog = state.equipmentAttackLog.slice(-10);
       saveCampaign();
       render();
-      notify(`${character.name} uses ${attack.name} with ${item.name} — ${damageSummary}.`);
+      notify(`${character.name} uses ${attack.name} with ${item.name} — ${damageSummary}.${afflictions.length ? ` ${afflictions.join("; ")}.` : ""}`);
     }
 
     function endTurn() {
@@ -2821,7 +2934,12 @@
 
       const equipmentAttack = target.closest("[data-equipment-attack]");
       if (equipmentAttack) {
-        attackWithEquipment(equipmentAttack.dataset.equipmentAttack, equipmentAttack.dataset.equipmentAttackId);
+        const targetPicker = equipmentAttack.closest(".equipment-attack-option")?.querySelector("[data-equipment-target]");
+        attackWithEquipment(
+          equipmentAttack.dataset.equipmentAttack,
+          equipmentAttack.dataset.equipmentAttackId,
+          targetPicker?.value || null
+        );
         return;
       }
 
