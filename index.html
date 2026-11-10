@@ -1950,8 +1950,8 @@
       const invalidUpkeep = toggleable && !isValidAbilityUpkeep(selectedAbility);
       const manaCost = selectedAbility.mana;
       const staminaCost = selectedAbility.stamina;
-      const manaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "mana", manaCost, selectedAbility);
-      const staminaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "stamina", staminaCost, selectedAbility);
+      const manaEffect = getEffectiveAbilityCost(character, "mana", manaCost, selectedAbility);
+      const staminaEffect = getEffectiveAbilityCost(character, "stamina", staminaCost, selectedAbility);
       const cooldown = progress.cooldowns[stateKey] || 0;
       const activeTurns = progress.activeTurns[stateKey] || 0;
       const chargeRecharges = progress.chargeRecharges?.[stateKey] || [];
@@ -2332,8 +2332,8 @@
         (progress.activeTurns[stateKey] || 0) > 0 ||
         (hasCharges && chargeRecharges.length >= ability.charges)
       ) return;
-      const manaCost = isRacialGift ? 0 : ability.mana;
-      const staminaCost = isRacialGift ? 0 : ability.stamina;
+      const manaCost = ability.mana;
+      const staminaCost = ability.stamina;
       const configurableFields = configurableAbilityFields(ability, isRacialGift);
       if (configurableFields.some((field) => !Object.hasOwn(suppliedValues, field))) {
         showAbilityCostForm(abilityId, ability.name, configurableFields, ability);
@@ -2365,8 +2365,8 @@
         return false;
       }
       const baseCosts = {
-        mana: isRacialGift ? 0 : isConfigurableAbilityValue(manaCost) ? suppliedValues.mana : manaCost ?? 0,
-        stamina: isRacialGift ? 0 : isConfigurableAbilityValue(staminaCost) ? suppliedValues.stamina : staminaCost ?? 0
+        mana: isConfigurableAbilityValue(manaCost) ? suppliedValues.mana : manaCost ?? 0,
+        stamina: isConfigurableAbilityValue(staminaCost) ? suppliedValues.stamina : staminaCost ?? 0
       };
       const resolvedValues = {
         mana: getEffectiveAbilityCost(character, "mana", baseCosts.mana, ability).cost,
