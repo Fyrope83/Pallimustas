@@ -1948,8 +1948,8 @@
       const toggleable = selectedAbility.activeMode === "toggle";
       const toggleActive = toggleable && progress.activeAbilities?.[stateKey] === true;
       const invalidUpkeep = toggleable && !isValidAbilityUpkeep(selectedAbility);
-      const manaCost = isRacialGift ? 0 : selectedAbility.mana;
-      const staminaCost = isRacialGift ? 0 : selectedAbility.stamina;
+      const manaCost = selectedAbility.mana;
+      const staminaCost = selectedAbility.stamina;
       const manaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "mana", manaCost, selectedAbility);
       const staminaEffect = isRacialGift ? { cost: 0, reduction: 0, sources: [] } : getEffectiveAbilityCost(character, "stamina", staminaCost, selectedAbility);
       const cooldown = progress.cooldowns[stateKey] || 0;
