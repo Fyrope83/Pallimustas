@@ -451,7 +451,7 @@
             { id: "counterfeit-attack", stat: "physicalAttack", bonus: "2D10", duration: 10, target: "self" },
             { id: "counterfeit-resistance", stat: "damageResistance", bonus: "1D10", duration: 10, target: "self" },
             { id: "counterfeit-stamina", stat: "staminaRecovery", bonus: "+6", duration: 10, target: "self" } ], resourceEffects: [
-            { id: "counterfeit-stamina-max", resource: "stamina", amount: 50, target: "self" },
+            { id: "counterfeit-stamina-max", resource: "stamina", amount: 50, maximumIncrease: 50, target: "self" },
           ] },
           { id: "bob-unexpected-allies", name: "Unexpected Allies", category: "Doppelganger", summary: "Switch positions of all enemies and allies.", description: "You and your allies take an illusionary form of nearby enemies for a minute but you can all still recognise each other, everyone is randomly switch teleported. Also create illusions of your allies", mana: 60, stamina: 0, cooldown: 100, tags: ["Special Ability", "Dimension", "illusion", "Teleport"] },
           { id: "bob-echo-spirit", name: "Echo Spirit", category: "Doppelganger", summary: "An Incorporeal entity that can mimic the form of allies and enemies.", description: "An incorporeal entity that can mimic the form of allies and enemies as well as switch teleport with mimicked allies as well as mirroring ally's movements and attacks but can't inflict damage. While subsumed into the summoners aura, the summoner can manipulate it into projecting false traits, mimicking others auras or can be used to lift objects lighter than 10kg", mana: 0, stamina: 0, cooldown: 0, tags: ["Ritual", "Familiar", "passive"] },
@@ -541,7 +541,7 @@
             { id: "counterfeit-attack", stat: "physicalAttack", bonus: "2D10", duration: 10, target: "self" },
             { id: "counterfeit-resistance", stat: "damageResistance", bonus: "1D10", duration: 10, target: "self" },
             { id: "counterfeit-stamina", stat: "staminaRecovery", bonus: "+6", duration: 10, target: "self" } ], resourceEffects: [
-            { id: "counterfeit-stamina-max", resource: "stamina", amount: 50, target: "self" },
+            { id: "counterfeit-stamina-max", resource: "stamina", amount: 50, maximumIncrease: 75, target: "self" },
           ] },
           { id: "pat-projection", name: "Projection", category: "Vessel", summary: "Summon a small drone to project your senses into.", description: "Project your senses into a small flying drone that is normal rank and can move around. The drone cannot attack but your aura can be projected into it with little control.", mana: 10, stamina: 0, cooldown: 10, tags: ["Special Ability", "Conjuration"] },
           { id: "pat-free-runner", name: "Free Runner", category: "Vessel", summary: "Increased speed, reflexes, balance and spatial sense.", description: "Increase your speed, reflexes, balance and spatial sense.", mana: 0, stamina: 0, cooldown: 0, tags: ["Special Ability", "Movement", "passive"], enhancements: [
@@ -1223,8 +1223,10 @@
         if (!effect || effect.stat !== stat) return [];
         const source = characterById(activeEffect.sourceCharacterId);
         const ability = allCharacterAbilities(source).find((entry) => entry.id === activeEffect.sourceAbilityId);
+        const configuration = [ability, ...(ability.variants || [])]
+          .find((entry) => entry.id === activeEffect.sourceConfigurationId) || ability;
         return [{
-          bonus: String(activeEffect.bonus ?? effect.bonus),
+          bonus: enhancedAbilityEffectBonus(character, ability, configuration, stat, effect.bonus),
           source: ability.name,
           detail: `${activeEffect.remainingTurns} turn${activeEffect.remainingTurns === 1 ? "" : "s"} remaining`
         }];
