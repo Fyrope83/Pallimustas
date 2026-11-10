@@ -577,7 +577,11 @@
           { id: "nero-beacon-of-hope", name: "Beacon of Hope", summary: "Buffing abilities have increased effect.", description: "Buffing abilities have increased effect and are greatly enhanced if targeting allies", cooldown: 0, duration: 0, tags: ["Racial Gift", "Buff", "passive", "enhancement"], enhancement: { target: "self", targetTags: ["Buff"] } },
           { id: "nero-Tireless", name: "Tireless", summary: "less stamina usage", description: "Resistant to stamina drain, Essence abilities consume less stamina to use", stamina: 0, mana: 0, cooldown: 0, duration: 0, tags: ["Racial Gift", "Buff", "passive"], costEffects: [
             { id: "nero-tireless-self", stamina: 10, target: "self" } ] },
-          { id: "nero-sprint", name: "Sprint", summary: "You can dash", description: "Do your movement speed again for 135 stamina(this does not cost an action)", stamina: 135, mana: 0, cooldown: 0, duration: 0, tags: ["Racial Gift", "Movement"] }
+          { id: "nero-sprint", name: "Sprint", summary: "You can dash", description: "Do your movement speed again for 135 stamina(this does not cost an action)", stamina: 135, mana: 0, cooldown: 0, duration: 0, usesPerTurn: 99, tags: ["Racial Gift", "Movement"] },
+          { id: "nero-echolocation", name: "Echolocation", summary: "You can pulse your aura to sense the area around you", description: "You can pulse your aura to sense the area around you and feel physical objects. Your aura is also stronger", stamina: 0, mana: 0, cooldown: 0, duration: 0, tags: ["Racial Gift", "Perception", "passive"], variants: [
+            { id: "nero-echo-roar", name: "Echo Roar", summary: "Roar to increase stats of allies", description: "Roar to increase Allies' Power, Speed and Spirit attributes for 3 turns", stamina: 0, mana: 0, cooldown: 10, duration: 0, activeVersion: true, tags: ["Racial Gift", "Buff"], afflictioneffects: [
+              { id: "nero-echo-roar-buff", afflictionId: "echo-roar", target: "others", stacks: 1, duration: 3, maxStacksPerTurn: 1, maxTotalStacks: 1 }
+            ] } ] }
 
         ]
       },
@@ -719,6 +723,11 @@
           { resource: "mana", amountPerStack: 25 },
           { resource: "stamina", amountPerStack: 50 }
         ]
+      },
+      "echo-roar": {
+        name: "Echo Roar",
+        description: "Significantly increased Power, Speed and Spirit attributes.",
+        statEffects: [{ stat: "physicalAttack", bonus: "1D12", perStack: true }, { stat: "physicalResistance", bonus: "1D12", perStack: true }, { stat: "magic", bonus: "1D12", perStack: true }, { stat: "magicResistance", bonus: "+1D12", perStack: true }, { stat: "speed", bonus: "+12", perStack: true }, { stat: "reflexes", bonus: "+2", perStack: true }]
       }
     };
     const STORAGE_KEY = "pallimustas-campaign-v1";
