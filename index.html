@@ -67,7 +67,7 @@
       font-size: 11px; font-weight: 700;
     }
     .roster-person { min-width: 0; flex: 1; display: block; }
-    .roster-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .roster-name { display: block; overflow-wrap: anywhere; }
     .roster-class { display: block; margin-top: 4px; color: var(--faint); font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
     .turn-indicator { color: var(--gold); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
     .sidebar-bottom { margin-top: auto; padding: 16px 9px 0; }
@@ -242,6 +242,10 @@
     .cost-chip.active-chip { border-color: #385044; color: #9dc5a6; }
     .ability-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
     .ability-tag { color: #87958a; font-size: 8px; }
+    .crystal-list { display: grid; gap: 6px; margin-top: 8px; }
+    .crystal-item, .crystal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+    .crystal-item { justify-content: space-between; color: var(--muted); font-size: 9px; }
+    .crystal-actions .button { min-height: 25px; padding: 0 7px; font-size: 8px; }
     .ability-action { min-width: 80px; display: grid; justify-items: end; gap: 5px; }
     .ability-action .button { min-height: 29px; padding: 0 10px; font-size: 9px; }
     .disabled-reason { color: var(--faint); font-size: 8px; text-align: right; }
@@ -368,6 +372,7 @@
      * Cost effect targets can also use "others" to affect everyone except the source.
      * Mana Tide uses { durationRounds, maxRecovery, manaPerRecovery, growth }.
      * Mana spent after cost reductions while it is active adds the matching recovery bonus to the character who paid it.
+     * Crystal summon abilities can use { crystalSummon: { max, disableTurns } } to track a limited number of crystals with independent owner-turn disable timers.
 
      * Each effect uses { id, resource, amount, target }; set amount to "XX" to ask on use.
      * Resource effect amounts may be negative to spend a resource, or positive to restore it.
@@ -384,6 +389,8 @@
      * Optional summary and description text is shown below the equipment name.
      * Configure character titles and inventory as [{ name, description }].
      * Weapons use attacks: [{ id, name, stat, modifier }]; attack amounts include matching active/passive ability and racial-gift statEffects.
+     * Tag an ability with "attack" to show its attack buttons. Configure attacks: [{ id, name, stats: ["physicalAttack", "magic"], modifier }] to add those stats together; a tagged ability without attacks defaults to physicalAttack.
+     * Ability attacks use the same formula options as weapons (damageMultiplier and damageDieSides), but do not spend the ability's resources or trigger its cooldown.
      * Set damageMultiplier on a weapon (for example 0.75) to scale the selected stat and its bonuses, rounding up after the roll, before adding the weapon modifier.
      * Set damageDieSides on a weapon to convert every die in its attack stat, stat bonuses, and weapon modifier to that die size before damage scaling. Flat bonuses are unchanged.
      * A weapon without attacks gets a default Attack using item.stat (or physicalAttack) and item.modifier.
@@ -624,11 +631,13 @@
         essences: ["Magic", "Dimension", "Wing", "Dragon"],
         abilities: [
           { id: "giorn-mirror-magic", name: "Mirror Magic", category: "Magic", summary: "Copy an ability an ally has used within the last turn", description: "Copy an ability an ally has used within the last turn. This ability has the same cost and cooldown as the original spell. Using this spell can increase or decrease the rank of the original spell to the rank of this spell, including gaining or losing effects. This also has a reduced cooldown and cost if the rank has been increased.", mana: "XX", stamina: "XX", cooldown: "XX", tags: ["Special Ability", "Magic", "Copy"] },
-          { id: "giorn-crystalize-mana", name: "Crystalize Mana", category: "Magic", summary: "Create a crystal that accelerates mana recovery.", description: "Create a crystal that floats around you, accelerating mana recovery. The crystal is impervious to damage, but vulnerable to dispel effects and can intercept projectiles, negating the effect then it becomes inactive for 3 turns. If dispelled, crystals grant an immediate burst of 50 mana. You can have up to three mana crystals at a time.", mana: 10, stamina: 0, cooldown: 0, tags: ["Conjuration", "Restoration", "Buff"] },
+          { id: "giorn-crystalize-mana", name: "Crystalize Mana", category: "Magic", summary: "Create up to three crystals that accelerate mana recovery.", description: "Create a crystal that floats around you, accelerating mana recovery. The crystal is impervious to damage, but vulnerable to dispel effects and can intercept projectiles, negating the effect then it becomes inactive for 3 turns. If dispelled, crystals grant an immediate burst of 50 mana. You can have up to three mana crystals at a time.", mana: 10, stamina: 0, cooldown: 0, charges: 3, recharge: 3, crystalSummon: { max: 3, disableTurns: 3 }, tags: ["Conjuration", "Restoration", "Buff"] },
           { id: "giorn-astral-lantern", name: "Astral Lantern", category: "Magic", summary: "Familiar that resembles a small floating lantern.", description: "Reveals nearby, hidden enemies. Makes ranged attacks with bolts of disruptive force. Can intercept and negate magical projectiles. Negating powerful projectiles means the Astral lantern needs to recharge. The summoner can use mana to help Astral lantern recharge faster. Familiar can be subsumed into the caster's eyes. When it has done so, the summoner can see hidden enemies and consume mana to make disruptive-force beam attacks from their eyes. Enemies revealed by the Astral lantern take 6 transcendent damage per turn.", mana: 0, stamina: 0, cooldown: 2, tags: ["Familiar", "Summon", "Transcendent"] },
           { id: "giorn-teleport", name: "Teleport", category: "Magic", summary: "Teleport to a point within sight.", description: "Teleports the user to a point within sight, with a maximum limit of 100 km, and You can also teleport essence users of Bronze rank and below with you for a cost of +5 per person; Iron rankers and below don\'t have a mana cost to teleport", mana: 40, stamina: 0, cooldown: 10, tags: ["Special Ability", "Magic", "Teleport"] },
           { id: "giorn-magically-refined", name: "Magically Refined", category: "Magic", summary: "Magic around you is refined and stabilised.", description: "The ambient magic around you is stablised and you are able to perform rituals up to one rank higher than your own without changing the environment. The side effects of consuming spirit coins higher then your own rank are also reduced", mana: 0, stamina: 0, cooldown: 0, tags: ["Aura", "Magic", "passive"] },
-          { id: "giorn-god-striking-fist", name: "God Striking Fist", category: "Dimension", summary: "Make a hard fast punch extremely powerful punch.", description: "Make a hard, fast punch. Time and space manipulation will not function in the vicinity while the punch is being swung. Damage for this ability is double your attack and magic attack combined. Cooldown is reduced based on the condition of the enemy after the attack. More resilient enemies result in a shorter cooldown time. An amount of stamina and mana is refunded based on the condition of the enemy. A sufficiently resilient enemy may trigger a refund of stamina and mana greater than the initial cost.", mana: 90, stamina: 90, cooldown: 111, tags: ["blood", "melee"] },
+          { id: "giorn-god-striking-fist", name: "God Striking Fist", category: "Dimension", summary: "Make a hard fast punch extremely powerful punch.", description: "Make a hard, fast punch. Time and space manipulation will not function in the vicinity while the punch is being swung. Damage for this ability is double your attack and magic attack combined. Cooldown is reduced based on the condition of the enemy after the attack. More resilient enemies result in a shorter cooldown time. An amount of stamina and mana is refunded based on the condition of the enemy. A sufficiently resilient enemy may trigger a refund of stamina and mana greater than the initial cost.", mana: "XX", stamina: "XX", cooldown: 6666, tags: ["Dimension", "Special Attack", "attack"],
+            attacks: [{ id: "god-striking-fist-punch", name: "Punch", stats: ["physicalAttack", "magic"] }]
+          },
           { id: "giorn-thorn-dance", name: "Thorn Dance", category: "Combat", summary: "Whirl between foes with a pair of curved blades.", description: "Whirl between foes with a pair of curved blades.", mana: 8, stamina: 30, cooldown: 2, tags: ["thorn", "movement"] },
           { id: "giorn-echo-strike", name: "Echo Strike", category: "Combat", summary: "A false swing distracts before the real blow lands.", description: "A false swing distracts before the real blow lands.", mana: 12, stamina: 18, cooldown: 2, tags: ["echo", "illusion"] },
           { id: "giorn-hunters-mark", name: "Hunter's Mark", category: "Combat", summary: "Mark a target and press the attack with relentless precision.", description: "Mark a target and press the attack with relentless precision.", mana: 10, stamina: 20, cooldown: 2, tags: ["hunger", "blood"] },
@@ -928,18 +937,35 @@
     function equipmentAttacks(item) {
       if (Array.isArray(item.attacks) && item.attacks.length) {
         return item.attacks.filter((attack) => attack && typeof attack === "object").map((attack, index) => ({
+          ...attack,
           id: typeof attack.id === "string" && attack.id ? attack.id : `attack-${index + 1}`,
           name: typeof attack.name === "string" && attack.name ? attack.name : `Attack ${index + 1}`,
-          stat: typeof attack.stat === "string" && attack.stat ? attack.stat : item.stat || "physicalAttack",
+          stats: attack.stats !== undefined
+            ? attack.stats
+            : [typeof attack.stat === "string" && attack.stat ? attack.stat : item.stat || "physicalAttack"],
           modifier: attack.modifier ?? item.modifier ?? ""
         }));
       }
       return [{
         id: "default",
         name: "Attack",
-        stat: typeof item.stat === "string" && item.stat ? item.stat : "physicalAttack",
+        stats: item.attackStats !== undefined
+          ? item.attackStats
+          : [typeof item.stat === "string" && item.stat ? item.stat : "physicalAttack"],
         modifier: item.modifier ?? item.attack ?? ""
       }];
+    }
+
+    function abilityAttacks(ability) {
+      if (!abilityHasAnyTag(ability, ["attack"])) return [];
+      return equipmentAttacks(ability);
+    }
+
+    function isValidAttackConfiguration(character, item, attack) {
+      const stats = attack.stats === undefined ? [attack.stat] : attack.stats;
+      return Array.isArray(stats) && stats.length > 0 &&
+        stats.every((stat) => typeof stat === "string" && Object.hasOwn(character.stats, stat)) &&
+        equipmentAttackResult(character, item, attack) !== null;
     }
 
     function statDisplayName(stat) {
@@ -1006,28 +1032,41 @@
     function equipmentAttackResult(character, item, attack) {
       const multiplier = attack.damageMultiplier ?? item.damageMultiplier ?? 1;
       if (!Number.isFinite(multiplier) || multiplier <= 0) return null;
+      const stats = attack.stats === undefined ? [attack.stat] : attack.stats;
+      if (!Array.isArray(stats) || !stats.length || stats.some((stat) => typeof stat !== "string" || !Object.hasOwn(character.stats, stat))) return null;
 
       const configuredDieSides = attack.damageDieSides ?? item.damageDieSides;
       const transformDice = configuredDieSides !== undefined;
-      const rawStatFormula = parseDiceFormula(character.stats[attack.stat]);
       const hasWeaponModifier = attack.modifier !== undefined && attack.modifier !== null && String(attack.modifier).trim() !== "";
       const rawWeaponFormula = hasWeaponModifier ? parseDiceFormula(attack.modifier) : { dice: new Map(), flat: 0 };
-      if (!rawStatFormula || !rawWeaponFormula) return null;
-      const statFormula = transformDice ? changeDiceSides(rawStatFormula, configuredDieSides) : rawStatFormula;
-      const weaponFormula = transformDice ? changeDiceSides(rawWeaponFormula, configuredDieSides) : rawWeaponFormula;
-      if (!statFormula || !weaponFormula) return null;
-
-      const totalStatFormula = { dice: new Map(statFormula.dice), flat: statFormula.flat };
-      for (const modifier of getStatModifiers(character, attack.stat, false)) {
-        const rawModifier = parseDiceFormula(modifier.bonus);
-        const parsed = rawModifier && transformDice
-          ? changeDiceSides(rawModifier, configuredDieSides)
-          : rawModifier;
-        if (!parsed) return null;
-        for (const [sides, count] of parsed.dice) {
+      if (!rawWeaponFormula) return null;
+      const totalStatFormula = { dice: new Map(), flat: 0 };
+      for (const stat of stats) {
+        const rawStatFormula = parseDiceFormula(character.stats[stat]);
+        const statFormula = rawStatFormula && transformDice
+          ? changeDiceSides(rawStatFormula, configuredDieSides)
+          : rawStatFormula;
+        if (!statFormula) return null;
+        for (const [sides, count] of statFormula.dice) {
           totalStatFormula.dice.set(sides, (totalStatFormula.dice.get(sides) || 0) + count);
         }
-        totalStatFormula.flat += parsed.flat;
+        totalStatFormula.flat += statFormula.flat;
+      }
+      const weaponFormula = transformDice ? changeDiceSides(rawWeaponFormula, configuredDieSides) : rawWeaponFormula;
+      if (!weaponFormula) return null;
+
+      for (const stat of stats) {
+        for (const modifier of getStatModifiers(character, stat, false)) {
+          const rawModifier = parseDiceFormula(modifier.bonus);
+          const parsed = rawModifier && transformDice
+            ? changeDiceSides(rawModifier, configuredDieSides)
+            : rawModifier;
+          if (!parsed) return null;
+          for (const [sides, count] of parsed.dice) {
+            totalStatFormula.dice.set(sides, (totalStatFormula.dice.get(sides) || 0) + count);
+          }
+          totalStatFormula.flat += parsed.flat;
+        }
       }
       const scaled = { dice: new Map(), flat: 0 };
       for (const [sides, count] of totalStatFormula.dice) {
@@ -1427,6 +1466,7 @@
         activeStatEffects: [],
         activeAfflictions: [],
         afflictionSequence: 0,
+        crystalSequence: 0,
         equipmentAttackLog: [],
         manaTide: { active: false, roundsElapsed: 0, spentByCharacter: {} },
         characters: Object.fromEntries(CHARACTERS.map((character) => [
@@ -1441,6 +1481,9 @@
                 .map((configuration) => [abilityStateKey(ability, configuration === ability ? null : configuration), false])
             )),
             chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
+            crystals: Object.fromEntries(allCharacterAbilities(character)
+              .filter((ability) => ability.crystalSummon)
+              .map((ability) => [ability.id, []])),
             abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0])),
             afflictionApplicationsThisTurn: {},
             equippedEquipment: []
@@ -1587,6 +1630,39 @@
         highestAfflictionSequence,
         initial.activeAfflictions.length
       );
+      if (Number.isSafeInteger(parsed.crystalSequence) && parsed.crystalSequence >= 0) {
+        initial.crystalSequence = parsed.crystalSequence;
+      }
+      for (const character of CHARACTERS) {
+        const savedCharacter = parsed.characters?.[character.id];
+        if (!savedCharacter?.crystals || typeof savedCharacter.crystals !== "object") continue;
+        for (const ability of allCharacterAbilities(character)) {
+          const configuration = ability.crystalSummon;
+          const savedCrystals = savedCharacter.crystals[ability.id];
+          if (
+            !configuration ||
+            !Number.isSafeInteger(configuration.max) ||
+            configuration.max < 1 ||
+            !Number.isSafeInteger(configuration.disableTurns) ||
+            configuration.disableTurns < 1 ||
+            !Array.isArray(savedCrystals)
+          ) continue;
+          initial.characters[character.id].crystals[ability.id] = savedCrystals
+            .filter((crystal) =>
+              crystal &&
+              typeof crystal.id === "string" &&
+              Number.isInteger(crystal.disabledTurns) &&
+              crystal.disabledTurns >= 0 &&
+              crystal.disabledTurns <= configuration.disableTurns
+            )
+            .slice(0, configuration.max)
+            .map((crystal) => ({ id: crystal.id, disabledTurns: crystal.disabledTurns }));
+          for (const crystal of initial.characters[character.id].crystals[ability.id]) {
+            const match = /^mana-crystal-(\d+)$/.exec(crystal.id);
+            if (match) initial.crystalSequence = Math.max(initial.crystalSequence, Number(match[1]));
+          }
+        }
+      }
       const savedManaTide = parsed.manaTide;
       const configuredManaTide = manaTideAbility();
       if (
@@ -2048,6 +2124,9 @@
       const hasCharges = Number.isInteger(selectedAbility.charges) && selectedAbility.charges > 0 &&
         Number.isInteger(selectedAbility.recharge) && selectedAbility.recharge > 0;
       const availableCharges = hasCharges ? Math.max(0, selectedAbility.charges - chargeRecharges.length) : null;
+      const crystalSummon = selectedAbility.crystalSummon;
+      const crystals = crystalSummon ? progress.crystals?.[ability.id] || [] : [];
+      const crystalLimitReached = Boolean(crystalSummon && crystals.length >= crystalSummon.max);
       const usesPerTurn = Number.isInteger(selectedAbility.usesPerTurn) && selectedAbility.usesPerTurn > 0
         ? selectedAbility.usesPerTurn
         : 1;
@@ -2068,12 +2147,12 @@
       const nextChargeIn = outOfCharges ? Math.min(...chargeRecharges) : null;
       const turnUsesExhausted = usesThisTurn >= usesPerTurn;
       const disabled = passive || invalidUpkeep || (!toggleActive && (
-        resourceExhausted || turnUsesExhausted || cooldown > 0 || activeTurns > 0 || outOfCharges || !enoughResources ||
+        resourceExhausted || turnUsesExhausted || cooldown > 0 || activeTurns > 0 || outOfCharges || crystalLimitReached || !enoughResources ||
         (isManaTide && manaTideActive)
       ));
       const reason = isManaTide && manaTideActive
         ? `Affects the party · round ${state.manaTide.roundsElapsed + 1}/${selectedAbility.manaTide.durationRounds}`
-        : invalidUpkeep ? "Invalid upkeep configuration" : passive || toggleActive ? "" : resourceExhausted ? "Too exhausted to cast: mana and stamina must be nonnegative" : turnUsesExhausted ? "Uses for this turn spent" : activeTurns > 0 ? `Active for ${activeTurns} more turn${activeTurns === 1 ? "" : "s"}` : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : outOfCharges ? `Next use in ${nextChargeIn} turn${nextChargeIn === 1 ? "" : "s"}` : !enoughResources ? "Not enough mana or stamina" : "";
+        : invalidUpkeep ? "Invalid upkeep configuration" : passive || toggleActive ? "" : resourceExhausted ? "Too exhausted to cast: mana and stamina must be nonnegative" : turnUsesExhausted ? "Uses for this turn spent" : activeTurns > 0 ? `Active for ${activeTurns} more turn${activeTurns === 1 ? "" : "s"}` : cooldown > 0 ? `Ready in ${cooldown} turn${cooldown === 1 ? "" : "s"}` : crystalLimitReached ? `Maximum of ${crystalSummon.max} crystals summoned` : outOfCharges ? `Next use in ${nextChargeIn} turn${nextChargeIn === 1 ? "" : "s"}` : !enoughResources ? "Not enough mana or stamina" : "";
       const manaTooltip = manaEffect.sources.length ? ` title="Reduced by ${escapeHtml(manaEffect.sources.join(", "))}"` : "";
       const staminaTooltip = staminaEffect.sources.length ? ` title="Reduced by ${escapeHtml(staminaEffect.sources.join(", "))}"` : "";
       const resourceEffectChips = (selectedAbility.resourceEffects || []).map((effect) => {
@@ -2101,9 +2180,16 @@
         manaTideChip,
         upkeepChips,
         hasCharges ? `<span class="cost-chip cooldown">↻ ${availableCharges}/${selectedAbility.charges} uses${chargeRecharges.length ? ` · next in ${Math.min(...chargeRecharges)} turn${Math.min(...chargeRecharges) === 1 ? "" : "s"}` : ""}</span>` : "",
+        crystalSummon ? `<span class="cost-chip active-chip">✧ ${crystals.length}/${crystalSummon.max} crystals</span>` : "",
         usesPerTurn > 1 ? `<span class="cost-chip cooldown">↻ ${usesPerTurn} uses per turn</span>` : "",
         resourceEffectChips
       ].filter(Boolean).join("");
+      const crystalControls = crystalSummon ? `<div class="crystal-list">${crystals.map((crystal, index) =>
+        `<div class="crystal-item"><span>Crystal ${index + 1} · ${crystal.disabledTurns > 0 ? `disabled (${crystal.disabledTurns} turn${crystal.disabledTurns === 1 ? "" : "s"} left)` : "active"}</span><div class="crystal-actions">${crystal.disabledTurns > 0
+          ? ""
+          : `<button class="button subtle" data-disable-crystal="${escapeHtml(crystal.id)}" data-crystal-ability="${escapeHtml(ability.id)}">Disable for ${crystalSummon.disableTurns} turns</button>`
+        }<button class="button subtle" data-dispel-crystal="${escapeHtml(crystal.id)}" data-crystal-ability="${escapeHtml(ability.id)}">Dispel (+50 mana)</button></div></div>`
+      ).join("")}</div>` : "";
       const tags = (selectedAbility.tags || []).filter((tag) => tag !== "passive" && !tag.startsWith("variant:"))
         .map((tag) => `<span class="ability-tag">#${escapeHtml(tag)}</span>`).join("");
       const variants = ability.variants || [];
@@ -2114,9 +2200,14 @@
         : isManaTide
           ? `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${manaTideActive ? "Mana Tide active" : "Begin Mana Tide"}</button>`
         : `<button class="button ${disabled ? "" : "primary"}" data-use-ability="${escapeHtml(ability.id)}" ${disabled ? "disabled" : ""}>${turnUsesExhausted ? "Uses spent this turn" : usesThisTurn > 0 ? `Use again (${usesThisTurn}/${usesPerTurn})` : activeTurns > 0 ? "Active" : cooldown > 0 ? "Cooling down" : isRacialGift ? "Use gift" : "Use ability"}</button>`;
+      const attackButtons = abilityAttacks(selectedAbility).map((attack) => {
+        const validConfiguration = isValidAttackConfiguration(character, selectedAbility, attack);
+        const stats = Array.isArray(attack.stats) ? attack.stats.map(statDisplayName).join(" + ") : "Invalid stats";
+        return `<button class="button subtle" title="${escapeHtml(stats)}" data-ability-attack="${escapeHtml(ability.id)}" data-ability-attack-id="${escapeHtml(attack.id)}" ${validConfiguration ? "" : "disabled"}>${escapeHtml(attack.name)}</button>`;
+      }).join("");
       return `<div class="ability-row">
-        <div>${variantControl}<div class="ability-name">${escapeHtml(ability.name)}</div>${renderAbilityDescription(selectedAbility)}<div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div></div>
-        <div class="ability-action">${passive ? '<span class="passive-label">PASSIVE</span>' : `${abilityButton}${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
+        <div>${variantControl}<div class="ability-name">${escapeHtml(ability.name)}</div>${renderAbilityDescription(selectedAbility)}<div class="ability-costs">${costs}</div><div class="ability-tags">${tags}</div>${crystalControls}</div>
+        <div class="ability-action">${attackButtons}${passive ? '<span class="passive-label">PASSIVE</span>' : `${abilityButton}${reason ? `<span class="disabled-reason">${reason}</span>` : ""}`}</div>
       </div>`;
     }
 
@@ -2162,8 +2253,7 @@
           ).join("")}</select></label>`
           : "";
         const attackOptions = attacks.map((attack) => {
-          const validConfiguration = Object.hasOwn(character.stats, attack.stat) &&
-            equipmentAttackResult(character, item, attack) !== null &&
+          const validConfiguration = isValidAttackConfiguration(character, item, attack) &&
             (item.afflictionEffects || []).every(isValidWeaponAfflictionEffect);
           return `<div class="equipment-attack-option"><span class="section-helper">${escapeHtml(equipmentAttackSummary(character, item, attack))}</span>${equipped ? `${targetPicker}<button class="button primary" data-equipment-attack="${escapeHtml(item.id)}" data-equipment-attack-id="${escapeHtml(attack.id)}" ${validConfiguration ? "" : "disabled"}>${escapeHtml(attack.name)}</button>` : ""}</div>`;
         }).join("");
@@ -2367,6 +2457,16 @@
       if (!configuredAbility) return;
       const ability = selectedAbilityFor(character, configuredAbility);
       if (isPassiveConfiguration(ability)) return;
+      if (ability.crystalSummon && (
+        !Number.isSafeInteger(ability.crystalSummon.max) ||
+        ability.crystalSummon.max < 1 ||
+        !Number.isSafeInteger(ability.crystalSummon.disableTurns) ||
+        ability.crystalSummon.disableTurns < 1
+      )) {
+        console.error(`Invalid crystal summon configuration for ${character.name}'s ${ability.name}.`, ability.crystalSummon);
+        notify(`${ability.name} has an invalid crystal configuration. Check the code.`);
+        return;
+      }
       if (hasUnlockedPotential(character) && hasNegativeCastingResource(character)) {
         notify("Too exhausted to cast: mana and stamina must be nonnegative.");
         return false;
@@ -2419,6 +2519,11 @@
       const isRacialGift = (character.racialGifts || []).some((gift) => gift.id === abilityId);
       const stateKey = abilityStateKey(configuredAbility, ability.id === configuredAbility.id ? null : ability);
       if (toggleable && progress.activeAbilities?.[stateKey]) return;
+      const crystals = ability.crystalSummon ? progress.crystals?.[configuredAbility.id] || [] : [];
+      if (ability.crystalSummon && crystals.length >= ability.crystalSummon.max) {
+        notify(`You can have at most ${ability.crystalSummon.max} mana crystals at a time.`);
+        return;
+      }
       const chargeRecharges = progress.chargeRecharges?.[stateKey] || [];
       const hasCharges = Number.isInteger(ability.charges) && ability.charges > 0 &&
         Number.isInteger(ability.recharge) && ability.recharge > 0;
@@ -2488,6 +2593,15 @@
         progress.chargeRecharges ??= {};
         progress.chargeRecharges[stateKey] ??= [];
         progress.chargeRecharges[stateKey].push(ability.recharge);
+      }
+      if (ability.crystalSummon) {
+        progress.crystals ??= {};
+        progress.crystals[configuredAbility.id] ??= [];
+        state.crystalSequence += 1;
+        progress.crystals[configuredAbility.id].push({
+          id: `mana-crystal-${state.crystalSequence}`,
+          disabledTurns: 0
+        });
       }
       const resourceChanges = [];
       for (const effect of resolvedResourceEffects) {
@@ -2582,6 +2696,30 @@
       render();
       notify(`${ability.name} ${toggleable ? "activated" : "used"}${ability.duration && !toggleable ? ` for ${ability.duration} turns` : ""} — ${character.name}'s resources updated.${deactivatedAbilities.length ? ` Active abilities turned off: ${deactivatedAbilities.join(", ")}.` : ""}`);
       return true;
+    }
+
+    function disableCrystal(abilityId, crystalId) {
+      const character = getSelectedCharacter();
+      const ability = allCharacterAbilities(character).find((entry) => entry.id === abilityId);
+      const crystal = state.characters[character.id].crystals?.[abilityId]?.find((entry) => entry.id === crystalId);
+      if (!ability?.crystalSummon || !crystal || crystal.disabledTurns > 0) return;
+      crystal.disabledTurns = ability.crystalSummon.disableTurns;
+      saveCampaign();
+      render();
+      notify(`${character.name}'s crystal is disabled for ${crystal.disabledTurns} turns.`);
+    }
+
+    function dispelCrystal(abilityId, crystalId) {
+      const character = getSelectedCharacter();
+      const progress = state.characters[character.id];
+      const crystals = progress.crystals?.[abilityId];
+      const index = crystals?.findIndex((entry) => entry.id === crystalId) ?? -1;
+      if (index < 0) return;
+      crystals.splice(index, 1);
+      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + 50);
+      saveCampaign();
+      render();
+      notify(`${character.name} dispels a mana crystal and restores 50 mana.`);
     }
 
     function toggleAbility(abilityId) {
@@ -2705,9 +2843,8 @@
       const item = (character.equipment || []).find((entry) => entry.id === itemId && entry.type === "weapon");
       if (!item || !state.characters[character.id].equippedEquipment?.includes(item.id)) return;
       const attack = equipmentAttacks(item).find((entry) => entry.id === attackId);
-      const multiplier = attack?.damageMultiplier ?? item.damageMultiplier ?? 1;
       const result = attack && equipmentAttackResult(character, item, attack);
-      if (!attack || !Object.hasOwn(character.stats, attack.stat) || !Number.isFinite(multiplier) || multiplier <= 0 || !result) {
+      if (!attack || !isValidAttackConfiguration(character, item, attack) || !result) {
         console.error(`Invalid weapon attack configuration for ${character.name}'s ${item.name}.`, attack);
         notify(`${item.name} has an invalid attack stat, damage formula, or damage multiplier configuration. Check the code.`);
         return;
@@ -2729,12 +2866,27 @@
       notify(`${character.name} uses ${attack.name} with ${item.name} — ${damageSummary}.${afflictions.length ? ` ${afflictions.join("; ")}.` : ""}`);
     }
 
+    function attackWithAbility(abilityId, attackId) {
+      const character = getSelectedCharacter();
+      const ability = allCharacterAbilities(character).find((entry) => entry.id === abilityId);
+      if (!ability || !abilityHasAnyTag(ability, ["attack"])) return;
+      const selectedAbility = selectedAbilityFor(character, ability);
+      const attack = abilityAttacks(selectedAbility).find((entry) => entry.id === attackId);
+      if (!attack || !isValidAttackConfiguration(character, selectedAbility, attack)) {
+        console.error(`Invalid ability attack configuration for ${character.name}'s ${ability.name}.`, attack);
+        notify(`${ability.name} has an invalid attack stat or damage formula. Check the code.`);
+        return;
+      }
+      const damageSummary = equipmentAttackSummary(character, selectedAbility, attack);
+      notify(`${character.name} attacks with ${ability.name} (${attack.name}) — ${damageSummary}.`);
+    }
+
     function endTurn() {
       const character = getCurrentCharacter();
       const progress = state.characters[character.id];
       let manaTideEnded = false;
       // Recovery is capped at each character's configured maximum; no resource can overflow.
-      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + effectiveRecovery(character, "manaRecovery"));
+      progress.resources.mana = Math.min(character.resources.mana, progress.resources.mana + Math.round(effectiveRecovery(character, "manaRecovery")));
       progress.resources.stamina = Math.min(character.resources.stamina, progress.resources.stamina + effectiveRecovery(character, "staminaRecovery"));
       recoverFromAfflictions(character);
       const deactivatedAbilities = [];
@@ -2772,6 +2924,12 @@
         }
       }
       for (const ability of allCharacterAbilities(character)) {
+        if (progress.crystals?.[ability.id]) {
+          progress.crystals[ability.id] = progress.crystals[ability.id].map((crystal) => ({
+            ...crystal,
+            disabledTurns: Math.max(0, crystal.disabledTurns - 1)
+          }));
+        }
         const configurations = [ability, ...(ability.variants || [])];
         for (const configuration of configurations) {
           if (isPassiveConfiguration(configuration)) continue;
@@ -2836,6 +2994,9 @@
               .map((configuration) => [abilityStateKey(ability, configuration === ability ? null : configuration), false])
           )),
           chargeRecharges: Object.fromEntries(abilityConfigurationKeys(character).map((key) => [key, []])),
+          crystals: Object.fromEntries(allCharacterAbilities(character)
+            .filter((ability) => ability.crystalSummon)
+            .map((ability) => [ability.id, []])),
           abilityUsesThisTurn: Object.fromEntries(allCharacterAbilities(character).map((ability) => [ability.id, 0])),
           afflictionApplicationsThisTurn: {},
           equippedEquipment: [...(state.characters[character.id].equippedEquipment || [])]
@@ -2844,6 +3005,7 @@
       state.activeStatEffects = [];
       state.activeAfflictions = [];
       state.afflictionSequence = 0;
+      state.crystalSequence = 0;
       state.equipmentAttackLog = [];
       state.manaTide = { active: false, roundsElapsed: 0, spentByCharacter: {} };
       state.variantSelection = {};
@@ -2934,9 +3096,27 @@
         return;
       }
 
+      const abilityAttack = target.closest("[data-ability-attack]");
+      if (abilityAttack) {
+        attackWithAbility(abilityAttack.dataset.abilityAttack, abilityAttack.dataset.abilityAttackId);
+        return;
+      }
+
       const abilityToggle = target.closest("[data-toggle-ability]");
       if (abilityToggle) {
         toggleAbility(abilityToggle.dataset.toggleAbility);
+        return;
+      }
+
+      const crystalDisable = target.closest("[data-disable-crystal]");
+      if (crystalDisable) {
+        disableCrystal(crystalDisable.dataset.crystalAbility, crystalDisable.dataset.disableCrystal);
+        return;
+      }
+
+      const crystalDispel = target.closest("[data-dispel-crystal]");
+      if (crystalDispel) {
+        dispelCrystal(crystalDispel.dataset.crystalAbility, crystalDispel.dataset.dispelCrystal);
         return;
       }
 
