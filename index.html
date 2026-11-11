@@ -319,13 +319,13 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">✦</div>
-        <div><div class="brand-name">Pallimustas</div><div class="brand-caption">Game master’s ledger</div></div>
+        <div><div class="brand-name">Pallimustas</div><div class="brand-caption">Game master's ledger</div></div>
       </div>
       <div class="section-label">Campaign</div>
       <nav aria-label="Main navigation">
         <button class="nav-button active" data-view="overview"><span class="nav-icon">▦</span> DM Overview</button>
         <button class="nav-button" data-view="sheet"><span class="nav-icon">▤</span> Character Sheet</button>
-        <button class="nav-button" data-view="buffs"><span class="nav-icon">✧</span> Buffs</button>
+        <button class="nav-button" data-view="buffs"><span class="nav-icon">✧</span> Afflictions</button>
       </nav>
       <div class="section-label roster-heading"><span>Party roster</span><span class="roster-count" id="roster-count"></span></div>
       <div class="roster" id="roster"></div>
@@ -770,11 +770,12 @@
       "echo-roar": {
         name: "Echo Roar",
         description: "Significantly increased Power, Speed and Spirit attributes.",
-        statEffects: [{ stat: "physicalAttack", bonus: "1D12", perStack: true }, { stat: "physicalResistance", bonus: "1D12", perStack: true }, { stat: "magic", bonus: "1D12", perStack: true }, { stat: "magicResistance", bonus: "+1D12", perStack: true }, { stat: "speed", bonus: "+12", perStack: true }, { stat: "reflexes", bonus: "+2", perStack: true }]
+        statEffects: [{ stat: "physicalAttack", bonus: "1D12", perStack: true }, { stat: "damageResistance", bonus: "1D12", perStack: true }, { stat: "magic", bonus: "1D12", perStack: true }, { stat: "magicResistance", bonus: "+1D12", perStack: true }, { stat: "speed", bonus: "+12", perStack: true }, { stat: "reflexes", bonus: "+2", perStack: true }]
       },
       'subjugating toxin': {
         name: "Subjugating Toxin",
-        description: "Anyone with this affliction has -1 reflexes, wears off after 1 turn."
+        description: "Anyone with this affliction has -1 reflexes, wears off after 1 turn.",
+        statEffects: [{ stat: "reflexes", bonus: "-1", perStack: true }]
       }
     };
     const STORAGE_KEY = "pallimustas-campaign-v1";
@@ -1634,7 +1635,7 @@
       initial.turn = Number.isInteger(parsed.turn) && parsed.turn > 0 ? parsed.turn : 1;
       initial.turnIndex = Number.isInteger(parsed.turnIndex) ? Math.max(0, parsed.turnIndex) % CHARACTERS.length : 0;
       initial.selectedId = CHARACTERS.some((character) => character.id === parsed.selectedId) ? parsed.selectedId : CHARACTERS[0].id;
-      initial.view = ["sheet", "buffs"].includes(parsed.view) ? parsed.view : "overview";
+      initial.view = ["sheet", "Afflictions"].includes(parsed.view) ? parsed.view : "overview";
       if (parsed.variantSelection && typeof parsed.variantSelection === "object") {
         for (const character of CHARACTERS) {
           for (const ability of allCharacterAbilities(character)) {
