@@ -1251,14 +1251,14 @@
       const progress = Math.max(0, Math.min(duration - 1, state.manaTide.roundsElapsed));
       // Completed party rounds drive a quadratic ramp from zero to the configured maximum.
       const ramp = configured.maxRecovery * (progress / (duration - 1)) ** 2;
-      const spent = state.manaTide.spentByCharacter?.[character.id] || 0;
+      const spent = character.id === "Pat" ? 0 : state.manaTide.spentByCharacter?.[character.id] || 0;
       return ramp + spent / configured.manaPerRecovery;
     }
 
     function recordManaSpent(characterId, amount) {
       if (!state.manaTide?.active || !Number.isFinite(amount) || amount <= 0) return;
       state.manaTide.spentByCharacter ??= {};
-      const previous = state.manaTide.spentByCharacter[characterId] || 0;
+      const previous = character.id === "Pat" ? 0 : state.manaTide.spentByCharacter[characterId] || 0;
       state.manaTide.spentByCharacter[characterId] = Math.round((previous + amount) * 1e6) / 1e6;
     }
 
