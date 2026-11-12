@@ -1258,7 +1258,7 @@
     function recordManaSpent(characterId, amount) {
       if (!state.manaTide?.active || !Number.isFinite(amount) || amount <= 0) return;
       state.manaTide.spentByCharacter ??= {};
-      const previous = character.id === "Pat" ? 0 : state.manaTide.spentByCharacter[characterId] || 0;
+      const previous = characterId === "Pat" ? 0 : state.manaTide.spentByCharacter[characterId] || 0;
       state.manaTide.spentByCharacter[characterId] = Math.round((previous + amount) * 1e6) / 1e6;
     }
 
